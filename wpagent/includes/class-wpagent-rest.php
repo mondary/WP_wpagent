@@ -257,10 +257,24 @@ final class WPAgent_REST {
 		$token_esc = esc_attr($token);
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>';
-			$html .= '<title>WPagent — Capture</title>';
-		$html .= '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:16px;max-width:720px}textarea,input{width:100%;font-size:16px;padding:10px;margin:8px 0}button{font-size:16px;padding:10px 14px}small{color:#555}</style>';
-		$html .= '</head><body>';
-			$html .= '<h1>WPagent — Capture</h1>';
+		$html .= '<title>WPagent — Capture</title>';
+		$html .= '<style>
+			:root{color-scheme:light}
+			body{margin:0;background:#fff;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+			.wrap{max-width:720px;margin:0 auto;padding:18px}
+			.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(17,24,39,.08)}
+			h1{font-size:18px;margin:0}
+			p{color:#6b7280;margin:8px 0 0}
+			label{display:block;font-size:12px;color:#6b7280;margin-top:12px}
+			input,textarea{width:100%;font-size:16px;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#111827;box-sizing:border-box}
+			textarea{min-height:120px;resize:vertical}
+			button{display:inline-flex;align-items:center;justify-content:center;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;background:#111827;color:#fff;font-weight:650;font-size:16px}
+			code{background:#f3f4f6;padding:2px 6px;border-radius:8px}
+			small{color:#6b7280}
+		</style>';
+		$html .= '</head><body><div class="wrap"><div class="card">';
+		$html .= '<h1>WPagent — Capture</h1>';
+		$html .= '<p>Ajoute un sujet à ton inbox.</p>';
 		$html .= '<form method="post" action="' . $action_url . '">';
 		$html .= '<input type="hidden" name="token" value="' . $token_esc . '"/>';
 		$html .= '<label>Texte / idée</label><textarea name="text" rows="6" placeholder="Colle ici ton idée…"></textarea>';
@@ -268,8 +282,8 @@ final class WPAgent_REST {
 		$html .= '<label>Titre source (optionnel)</label><input name="source_title" type="text" placeholder="Titre de l’article / vidéo…"/>';
 		$html .= '<button type="submit">Ajouter à la liste</button>';
 		$html .= '</form>';
-		$html .= '<p><small>Astuce iOS Raccourcis: action “Obtenir le contenu de l’URL” en POST vers <code>' . esc_html($action_url) . '</code> avec les champs token/text/url.</small></p>';
-		$html .= '</body></html>';
+		$html .= '<p><small>Astuce iOS Raccourcis: POST vers <code>' . esc_html($action_url) . '</code> avec token/text/url.</small></p>';
+		$html .= '</div></div></body></html>';
 
 		$response = new \WP_REST_Response($html, 200);
 		$response->header('Content-Type', 'text/html; charset=utf-8');
@@ -289,8 +303,8 @@ final class WPAgent_REST {
 			'start_url' => $app_url,
 			'scope' => site_url('/'),
 			'display' => 'standalone',
-			'background_color' => '#0b1220',
-			'theme_color' => '#0b1220',
+			'background_color' => '#ffffff',
+			'theme_color' => '#ffffff',
 			'icons' => [
 				[
 					'src' => $icon_192,
@@ -384,28 +398,28 @@ final class WPAgent_REST {
 		$html = '<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>';
 		$html .= '<title>WPagent</title>';
 		$html .= '<link rel="manifest" href="' . $manifest . '"/>';
-		$html .= '<meta name="theme-color" content="#0b1220"/>';
+		$html .= '<meta name="theme-color" content="#ffffff"/>';
 		$html .= '<style>
-			:root{--bg:#0b1220;--card:#111a2e;--text:#e8eefc;--muted:#9fb0d0;--acc:#7c3aed;--ok:#22c55e;--err:#ef4444}
-			body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#070b14,#0b1220);color:var(--text)}
+			:root{color-scheme:light;--bg:#ffffff;--card:#ffffff;--text:#111827;--muted:#6b7280;--acc:#111827;--ok:#166534;--err:#b91c1c;--border:#e5e7eb}
+			body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:var(--text)}
 			.wrap{max-width:860px;margin:0 auto;padding:18px}
-			.card{background:rgba(17,26,46,.92);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+			.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin:14px 0;box-shadow:0 18px 50px rgba(17,24,39,.08)}
 			h1{font-size:20px;margin:8px 0 0}
 			p{color:var(--muted);margin:6px 0 0}
 			label{display:block;font-size:12px;color:var(--muted);margin-top:10px}
-			input,textarea,select{width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(7,11,20,.65);color:var(--text);font-size:16px;box-sizing:border-box}
+			input,textarea,select{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:16px;box-sizing:border-box}
 			textarea{min-height:120px;resize:vertical}
 			.row{display:grid;grid-template-columns:1fr;gap:10px}
 			.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:12px 14px;background:var(--acc);color:#fff;font-weight:650;font-size:16px}
-			.btn.secondary{background:rgba(255,255,255,.12)}
+			.btn.secondary{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
 			.small{font-size:12px;color:var(--muted)}
 			.status{margin-top:10px;font-size:13px}
 			.status.ok{color:var(--ok)} .status.err{color:var(--err)}
 			.items{margin-top:8px}
-			.item{padding:10px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);margin:8px 0}
+			.item{padding:10px;border-radius:12px;background:#fafafa;border:1px solid var(--border);margin:8px 0}
 				.item a{display:block;margin-bottom:4px;color:var(--text);text-decoration:none;font-weight:750}
 				.item a:active,.item a:focus,.item a:hover{text-decoration:underline}
-			code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:8px}
+			code{background:#f3f4f6;padding:2px 6px;border-radius:8px}
 		</style>';
 		$html .= '</head><body><div class="wrap">';
 		$html .= '<div class="card"><h1>WPagent</h1><p>Inbox de sujets → génération IA → draft WordPress → publication.</p></div>';

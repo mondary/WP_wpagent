@@ -2,6 +2,10 @@
 
 Objectif: capturer rapidement des "sujets" depuis mobile (une inbox), puis les convertir ensuite en brouillons via IA.
 
+## Changelog
+
+Voir `CHANGELOG.md`.
+
 ## Installation
 
 1. Copie le dossier `wpagent/` dans `wp-content/plugins/wpagent/`

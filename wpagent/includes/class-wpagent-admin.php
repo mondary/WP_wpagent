@@ -5,15 +5,17 @@ if (!defined('ABSPATH')) {
 }
 
 final class WPAgent_Admin {
-		public static function init(): void {
-			add_action('admin_menu', [self::class, 'admin_menu']);
-			add_action('admin_menu', [self::class, 'reorder_submenus'], 999);
-			add_action('admin_enqueue_scripts', [self::class, 'enqueue_admin_assets']);
-			add_action('admin_post_wpagent_regenerate_token', [self::class, 'handle_regenerate_token']);
-			add_action('admin_post_wpagent_save_settings', [self::class, 'handle_save_settings']);
-			add_action('admin_post_wpagent_generate_draft', [self::class, 'handle_generate_draft']);
-			add_action('admin_post_wpagent_generate_draft_topic', [self::class, 'handle_generate_draft_topic']);
-			add_action('admin_post_wpagent_add_topic', [self::class, 'handle_add_topic']);
+	public static function init(): void {
+		add_action('admin_menu', [self::class, 'admin_menu']);
+		add_action('admin_menu', [self::class, 'reorder_submenus'], 999);
+		add_action('admin_enqueue_scripts', [self::class, 'enqueue_admin_assets']);
+		add_filter('admin_body_class', [self::class, 'admin_body_class']);
+
+		add_action('admin_post_wpagent_regenerate_token', [self::class, 'handle_regenerate_token']);
+		add_action('admin_post_wpagent_save_settings', [self::class, 'handle_save_settings']);
+		add_action('admin_post_wpagent_generate_draft', [self::class, 'handle_generate_draft']);
+		add_action('admin_post_wpagent_generate_draft_topic', [self::class, 'handle_generate_draft_topic']);
+		add_action('admin_post_wpagent_add_topic', [self::class, 'handle_add_topic']);
 
 		add_filter('post_row_actions', [self::class, 'topic_row_actions'], 10, 2);
 		add_filter('manage_edit-' . WPAgent_Post_Type::POST_TYPE . '_columns', [self::class, 'topic_columns']);
@@ -24,6 +26,24 @@ final class WPAgent_Admin {
 
 		// Ajoute un lien WPagent dans "Tous les articles".
 		add_filter('views_edit-post', [self::class, 'posts_list_add_wpagent_link']);
+	}
+
+	private static function is_wpagent_admin_page(): bool {
+		if (!function_exists('get_current_screen')) {
+			return false;
+		}
+		$screen = get_current_screen();
+		if (!($screen instanceof \WP_Screen)) {
+			return false;
+		}
+		return in_array($screen->id, ['toplevel_page_wpagent', 'posts_page_wpagent'], true);
+	}
+
+	public static function admin_body_class(string $classes): string {
+		if (self::is_wpagent_admin_page()) {
+			$classes .= ' wpagent-admin-page';
+		}
+		return $classes;
 	}
 
 	public static function admin_menu(): void {
@@ -52,26 +72,54 @@ final class WPAgent_Admin {
 
 	public static function enqueue_admin_assets(string $hook): void {
 		// Icône dans la liste des extensions WordPress (plugins.php).
-		if ($hook !== 'plugins.php') {
+		if ($hook === 'plugins.php') {
+			$icon_url = self::plugin_icon_url();
+			if ($icon_url === '') {
+				return;
+			}
+
+			$plugin_basename = plugin_basename(WPAGENT_PLUGIN_FILE);
+
+			wp_register_style('wpagent-admin-inline', false);
+			wp_enqueue_style('wpagent-admin-inline');
+
+			$css = 'tr[data-plugin="' . esc_attr($plugin_basename) . '"] .plugin-title strong:before{'
+				. 'content:"";display:inline-block;width:20px;height:20px;'
+				. 'background:url("' . esc_url($icon_url) . '") no-repeat center/contain;'
+				. 'margin-right:6px;vertical-align:text-bottom;}';
+
+			wp_add_inline_style('wpagent-admin-inline', $css);
 			return;
 		}
 
-		$icon_url = self::plugin_icon_url();
-		if ($icon_url === '') {
+		if (!in_array($hook, ['toplevel_page_wpagent', 'posts_page_wpagent'], true)) {
 			return;
 		}
 
-		$plugin_basename = plugin_basename(WPAGENT_PLUGIN_FILE);
+		$ver = defined('WPAGENT_VERSION') ? WPAGENT_VERSION : '1';
+		wp_enqueue_style(
+			'wpagent-admin',
+			plugins_url('assets/admin.css', WPAGENT_PLUGIN_FILE),
+			[],
+			$ver
+		);
 
-		wp_register_style('wpagent-admin-inline', false);
-		wp_enqueue_style('wpagent-admin-inline');
+		wp_enqueue_script(
+			'wpagent-admin',
+			plugins_url('assets/admin.js', WPAGENT_PLUGIN_FILE),
+			[],
+			$ver,
+			true
+		);
 
-		$css = 'tr[data-plugin="' . esc_attr($plugin_basename) . '"] .plugin-title strong:before{'
-			. 'content:"";display:inline-block;width:20px;height:20px;'
-			. 'background:url("' . esc_url($icon_url) . '") no-repeat center/contain;'
-			. 'margin-right:6px;vertical-align:text-bottom;}';
-
-		wp_add_inline_style('wpagent-admin-inline', $css);
+		wp_localize_script(
+			'wpagent-admin',
+			'wpagentAdmin',
+			[
+				'ajaxUrl' => admin_url('admin-ajax.php'),
+				'nonce' => wp_create_nonce('wpagent_fetch_models'),
+			]
+		);
 	}
 
 	private static function plugin_icon_url(): string {
@@ -452,55 +500,27 @@ final class WPAgent_Admin {
 		$gemini_key = (string) get_option(WPAgent_Settings::OPTION_GEMINI_API_KEY, '');
 		$openrouter_key_hint = $openrouter_key !== '' ? ('••••' . substr($openrouter_key, -4)) : '';
 		$gemini_key_hint = $gemini_key !== '' ? ('••••' . substr($gemini_key, -4)) : '';
-		$ajax_nonce = wp_create_nonce('wpagent_fetch_models');
 		$open_after = WPAgent_Settings::open_draft_after_generate();
 		$show_under_posts_menu = WPAgent_Settings::show_under_posts_menu();
 		$fetch_source_before_ai = WPAgent_Settings::fetch_source_before_ai();
 
-		echo '<div class="wrap wpagent-wrap">';
+		echo '<div class="wrap wpagent-admin">';
+		echo '<div class="wpagent-header">';
 		if ($icon_url !== '') {
-			echo '<h1 style="display:flex;align-items:center;gap:10px">';
-			echo '<img src="' . esc_url($icon_url) . '" alt="" width="28" height="28" style="border-radius:6px" />';
-			echo '<span>WPagent</span>';
-			echo '</h1>';
-		} else {
-			echo '<h1>WPagent</h1>';
+			echo '<img src="' . esc_url($icon_url) . '" alt="" />';
 		}
-		echo '<p>Objectif: capturer rapidement des sujets depuis ton téléphone, puis les convertir ensuite en brouillons via IA.</p>';
-
-		echo '<style>
-			.wpagent-wrap{
-				--wpagent-inspector-width: 240px;
-				--wpagent-inspector-right: 12px;
-				--wpagent-inspector-gap: 12px;
-				--wpagent-reserved: calc(var(--wpagent-inspector-width) + var(--wpagent-inspector-right) + var(--wpagent-inspector-gap));
-				max-width: none;
-			}
-			@media (min-width: 1040px){
-				.wpagent-wrap #wpagent-admin,
-				.wpagent-wrap #wpagent-admin #poststuff,
-				.wpagent-wrap #wpagent-admin #post-body{
-					max-width: none;
-					width: 100%;
-				}
-				.wpagent-wrap .wpagent-notice{
-					margin-right: 0;
-					width: calc(100% - var(--wpagent-reserved));
-					box-sizing: border-box;
-				}
-				.wpagent-wrap #post-body-content{max-width:none}
-				.wpagent-wrap #post-body-content .widefat{width:100%}
-			}
-		</style>';
+		echo '<h1 style="margin:0">WPagent</h1>';
+		echo '</div>';
+		echo '<p class="wpagent-subtitle">Capture rapide de sujets (inbox) → génération IA → drafts WordPress.</p>';
 
 		if (isset($_GET['updated'])) {
-			echo '<div class="notice notice-success wpagent-notice"><p>Réglages enregistrés.</p></div>';
+			echo '<div class="notice notice-success"><p>Réglages enregistrés.</p></div>';
 		}
 		if (isset($_GET['error'])) {
-			echo '<div class="notice notice-error wpagent-notice"><p>' . esc_html((string) $_GET['error']) . '</p></div>';
+			echo '<div class="notice notice-error"><p>' . esc_html((string) $_GET['error']) . '</p></div>';
 		}
 		if (isset($_GET['wpagent_error'])) {
-			echo '<div class="notice notice-error wpagent-notice"><p>' . esc_html((string) $_GET['wpagent_error']) . '</p></div>';
+			echo '<div class="notice notice-error"><p>' . esc_html((string) $_GET['wpagent_error']) . '</p></div>';
 		}
 		if (isset($_GET['generated']) && (string) $_GET['generated'] === '1') {
 			$draft_id = isset($_GET['draft_id']) ? (int) $_GET['draft_id'] : 0;
@@ -510,137 +530,31 @@ final class WPAgent_Admin {
 				$msg .= ' ';
 				$msg .= '<a href="' . esc_url($link) . '">Ouvrir</a>';
 			}
-			echo '<div class="notice notice-success wpagent-notice"><p>' . $msg . '</p></div>';
+			echo '<div class="notice notice-success"><p>' . $msg . '</p></div>';
 		}
 		if (isset($_GET['added']) && (string) $_GET['added'] === '1') {
-			echo '<div class="notice notice-success wpagent-notice"><p>Sujet ajouté à l’inbox.</p></div>';
+			echo '<div class="notice notice-success"><p>Sujet ajouté à l’inbox.</p></div>';
 		}
 
-			echo '<style>
-			#wpagent-admin #post-body.columns-2 #postbox-container-1{margin-top:0}
-			#wpagent-admin .wpagent-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-			#wpagent-admin .wpagent-actions .button{margin:0}
-			#wpagent-admin code{display:inline-block}
-			#wpagentModelsSelect{max-width:100%}
+		echo '<div class="wpagent-layout">';
+		echo '<main class="wpagent-main">';
 
-			#wpagent-inspector{
-				background:#fff;
-				border:1px solid #dcdcde;
-				border-radius:12px;
-				padding:12px;
-				box-shadow:0 8px 24px rgba(0,0,0,.08);
-			}
-			#wpagent-inspector h2{margin:14px 0 8px;font-size:14px}
-			#wpagent-inspector h2:first-child{margin-top:0}
-			#wpagent-inspector .wpagent-muted{color:#646970;font-size:12px;margin-top:6px}
-			#wpagent-inspector hr{border:0;border-top:1px solid #dcdcde;margin:12px 0}
-			#wpagent-inspector code{
-				display:inline;
-				white-space:normal;
-				word-break:break-word;
-				overflow-wrap:anywhere;
-			}
-			#wpagent-inspector pre code{white-space:pre}
-			#wpagent-inspector .wpagent-token-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-			#wpagent-inspector .wpagent-token-row code{flex:1;word-break:break-all}
-			#wpagent-inspector .wpagent-config-header{
-				position: sticky;
-				top: 0;
-				z-index: 20;
-				display:flex;
-				align-items:center;
-				justify-content:space-between;
-				gap:10px;
-				background:#fff;
-				/* étend le header sur toute la largeur du panneau malgré le padding du conteneur */
-				margin:-12px -12px 10px;
-				padding:12px 12px 10px;
-				border-bottom:1px solid #dcdcde;
-			}
-			#wpagent-inspector .wpagent-config-header h2{margin:0;font-size:14px}
-			#wpagent-inspector .wpagent-config-header .button{margin:0}
-			#wpagent-inspector input,
-			#wpagent-inspector textarea,
-			#wpagent-inspector select{
-				max-width:100%;
-				width:100%;
-				box-sizing:border-box;
-			}
-			#wpagent-inspector .regular-text{width:100%}
-			#wpagent-inspector textarea{min-height:110px}
-			#wpagent-inspector #system_prompt{min-height:260px}
-			#wpagent-inspector .wpagent-actions input[type="submit"],
-			#wpagent-inspector .wpagent-actions button{
-				width:auto;
-			}
-			#wpagent-inspector .wpagent-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
-			#wpagent-inspector .wpagent-switch{position:relative;display:inline-block;width:46px;height:26px;flex:0 0 auto}
-			#wpagent-inspector .wpagent-switch input{opacity:0;width:0;height:0}
-			#wpagent-inspector .wpagent-slider{
-				position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;
-				background:#c3c4c7;border-radius:999px;transition:.2s;
-			}
-			#wpagent-inspector .wpagent-slider:before{
-				position:absolute;content:"";height:20px;width:20px;left:3px;top:3px;
-				background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.25);
-			}
-			#wpagent-inspector .wpagent-switch input:checked + .wpagent-slider{background:#2271b1}
-			#wpagent-inspector .wpagent-switch input:checked + .wpagent-slider:before{transform:translateX(20px)}
-				#wpagent-provider-openrouter, #wpagent-provider-gemini{display:none}
-				#wpagent-model-current{font-size:12px;color:#646970;margin-top:6px}
-				#wpagent-inspector .spinner{float:none;margin:0 0 0 6px}
-				#wpagent-admin .wpagent-add-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-			#wpagent-admin .wpagent-add-row textarea{min-height:44px}
-			#wpagent-admin .wpagent-add-row .button{margin:0}
+		echo '<section class="wpagent-card">';
+		echo '<h2>Ajouter un sujet</h2>';
+		echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+		wp_nonce_field('wpagent_add_topic', 'wpagent_add_topic_nonce');
+		echo '<input type="hidden" name="action" value="wpagent_add_topic"/>';
+		echo '<div class="wpagent-add-row">';
+		echo '<div style="flex:1;min-width:260px"><textarea name="text" rows="2" class="large-text" placeholder="Écris une idée…"></textarea></div>';
+		submit_button('Ajouter', 'secondary', 'wpagent_add_topic_submit', false);
+		echo '</div>';
+		echo '</form>';
+		echo '<p class="wpagent-muted" style="margin:10px 0 0">Raccourci téléphone: <a href="' . esc_url($pwa_url) . '" target="_blank" rel="noreferrer noopener">PWA</a> · <a href="' . esc_url($capture_url) . '" target="_blank" rel="noreferrer noopener">Capture</a></p>';
+		echo '</section>';
 
-			@media (min-width: 1040px){
-				/* Neutralise la mise en page "colonnes" WP (floats) pour éviter le chevauchement sous le panneau fixed. */
-				#wpagent-admin #post-body{margin-right:0}
-					#wpagent-admin #post-body-content{
-						float:none;
-						width:auto;
-						margin-right: 0;
-						width: calc(100% - var(--wpagent-reserved));
-						overflow-x:auto;
-						box-sizing: border-box;
-					}
-				#wpagent-admin #postbox-container-1{
-					float:none;
-					width:auto;
-				}
-				#wpagent-inspector{
-					position:fixed;
-					right: var(--wpagent-inspector-right);
-					top:32px;
-					bottom:20px;
-					width: var(--wpagent-inspector-width);
-					overflow:auto;
-				}
-			}
-			@media (max-width: 1039px){
-				#wpagent-admin #post-body-content{margin-right:0}
-				#wpagent-inspector{position:static;width:auto}
-			}
-		</style>';
-
-		echo '<div id="wpagent-admin">';
-		echo '<div id="poststuff">';
-			echo '<div id="post-body" class="metabox-holder columns-2">';
-				echo '<div id="post-body-content">';
-					echo '<p>Ajoute des sujets (via PWA / capture) puis clique “Générer un draft”. Le draft est créé en <code>post</code> (statut <code>draft</code>).</p>';
-				echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
-				wp_nonce_field('wpagent_add_topic', 'wpagent_add_topic_nonce');
-				echo '<input type="hidden" name="action" value="wpagent_add_topic"/>';
-				echo '<div class="wpagent-add-row" style="margin-top:0">';
-				echo '<div style="flex:1;min-width:260px"><textarea name="text" rows="2" class="large-text" placeholder="Écris une idée…"></textarea></div>';
-				submit_button('Ajouter', 'secondary', 'wpagent_add_topic_submit', false);
-				echo '</div>';
-				echo '</form>';
-					echo '<hr/>';
-
-			$filter = isset($_GET['filter']) ? sanitize_key((string) wp_unslash($_GET['filter'])) : 'all';
-			if (!in_array($filter, ['all', 'todo', 'generated'], true)) {
-				$filter = 'all';
+		$filter = isset($_GET['filter']) ? sanitize_key((string) wp_unslash($_GET['filter'])) : 'all';
+		if (!in_array($filter, ['all', 'todo', 'generated'], true)) {
+			$filter = 'all';
 			}
 
 			$tabs = [
@@ -649,7 +563,9 @@ final class WPAgent_Admin {
 				'generated' => 'Déjà générés',
 			];
 
-			echo '<h3 class="nav-tab-wrapper" style="margin:12px 0 10px">';
+		echo '<section class="wpagent-card">';
+		echo '<h2>Sujets</h2>';
+		echo '<h3 class="nav-tab-wrapper">';
 			foreach ($tabs as $key => $label) {
 				$url = WPAgent_Settings::admin_page_url(['filter' => $key]);
 				$cls = 'nav-tab' . ($filter === $key ? ' nav-tab-active' : '');
@@ -695,258 +611,175 @@ final class WPAgent_Admin {
 			$query = new \WP_Query($args);
 
 		if (!$query->have_posts()) {
-			echo '<p>Aucun sujet pour le moment.</p>';
+			echo '<p class="wpagent-muted">Aucun sujet pour le moment.</p>';
 		} else {
-				echo '<table class="widefat striped"><thead><tr>';
-				echo '<th>Sujet</th><th>Draft</th><th style="text-align:right">Action</th>';
-				echo '</tr></thead><tbody>';
-				foreach ($query->posts as $topic) {
-					$topic_id = (int) $topic->ID;
-					$draft_ids = self::get_topic_draft_ids($topic_id);
+			echo '<table class="widefat striped wpagent-table"><thead><tr>';
+			echo '<th>Sujet</th><th>Draft</th><th style="text-align:right">Action</th>';
+			echo '</tr></thead><tbody>';
+			foreach ($query->posts as $topic) {
+				$topic_id = (int) $topic->ID;
+				$draft_ids = self::get_topic_draft_ids($topic_id);
 
-					echo '<tr>';
-					echo '<td><strong>' . esc_html(get_the_title($topic)) . '</strong><br/><span class="description">' . esc_html(get_the_date('', $topic)) . '</span></td>';
-					if (!$draft_ids) {
-						echo '<td>—</td>';
-					} else {
-						$links = [];
-						foreach ($draft_ids as $draft_id) {
-							$link = get_edit_post_link($draft_id, 'url');
-							if ($link) {
-								$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
-							}
+				echo '<tr>';
+				echo '<td><strong>' . esc_html(get_the_title($topic)) . '</strong><br/><span class="wpagent-muted">' . esc_html(get_the_date('', $topic)) . '</span></td>';
+				if (!$draft_ids) {
+					echo '<td>—</td>';
+				} else {
+					$links = [];
+					foreach ($draft_ids as $draft_id) {
+						$link = get_edit_post_link($draft_id, 'url');
+						if ($link) {
+							$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
 						}
-						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
 					}
-					echo '<td style="text-align:right">';
-					echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0;display:inline-block">';
-					wp_nonce_field('wpagent_generate_draft_' . $topic_id, 'wpagent_generate_draft_nonce_' . $topic_id);
-					echo '<input type="hidden" name="action" value="wpagent_generate_draft"/>';
-					echo '<input type="hidden" name="topic_id" value="' . (int) $topic_id . '"/>';
-					submit_button('Générer un draft', 'primary', 'wpagent_generate_draft_submit_' . $topic_id, false);
-					echo '</form>';
-					echo '</td>';
-					echo '</tr>';
+					echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
 				}
+				echo '<td style="text-align:right">';
+				echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0;display:inline-block">';
+				wp_nonce_field('wpagent_generate_draft_' . $topic_id, 'wpagent_generate_draft_nonce_' . $topic_id);
+				echo '<input type="hidden" name="action" value="wpagent_generate_draft"/>';
+				echo '<input type="hidden" name="topic_id" value="' . (int) $topic_id . '"/>';
+				submit_button('Générer un draft', 'primary', 'wpagent_generate_draft_submit_' . $topic_id, false);
+				echo '</form>';
+				echo '</td>';
+				echo '</tr>';
+			}
 			echo '</tbody></table>';
 		}
 
-			echo '</div>'; // post-body-content
+		echo '</section>';
+		echo '</main>';
 
-				echo '<div id="postbox-container-1" class="postbox-container">';
-				echo '<div id="wpagent-inspector">';
-				// Settings.
-					echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
-					wp_nonce_field('wpagent_save_settings', 'wpagent_save_settings_nonce');
-					echo '<input type="hidden" name="action" value="wpagent_save_settings"/>';
+		echo '<aside class="wpagent-sidebar">';
 
-					echo '<div class="wpagent-config-header">';
-					echo '<h2>Configuration</h2>';
-					submit_button('Enregistrer', 'primary', 'wpagent_save_settings_submit', false);
-					echo '</div>';
-
-					echo '<p style="margin-top:0"><label for="system_prompt"><strong>🧠 Pré-prompt</strong></label><br/>';
-					echo '<span class="wpagent-muted">Astuce: si tu veux revenir au pré-prompt par défaut, clique “Réinitialiser”.</span></p>';
-					echo '<textarea name="system_prompt" id="system_prompt" class="large-text" rows="6">' . esc_textarea($system_prompt) . '</textarea>';
-					echo '<div class="wpagent-actions" style="margin-top:8px">';
-					submit_button('Réinitialiser', 'secondary', 'wpagent_reset_preprompt', false);
-					echo '</div>';
-
-				echo '<div class="wpagent-toggle">';
-			echo '<div><strong>📝 Ouvrir le draft après génération</strong><div class="wpagent-muted">Sinon, tu restes sur la page WPagent.</div></div>';
-			echo '<label class="wpagent-switch" aria-label="Ouvrir le draft après génération">';
-			echo '<input type="checkbox" name="open_draft_after_generate" value="1"' . checked($open_after, true, false) . '/>';
-			echo '<span class="wpagent-slider"></span>';
-			echo '</label>';
-			echo '</div>';
-
-			echo '<div class="wpagent-toggle">';
-			echo '<div><strong>🗂️ Afficher WPagent dans “Articles”</strong><div class="wpagent-muted">Ajoute WPagent comme sous-menu de Articles.</div></div>';
-			echo '<label class="wpagent-switch" aria-label="Afficher WPagent dans Articles">';
-			echo '<input type="checkbox" name="show_under_posts_menu" value="1"' . checked($show_under_posts_menu, true, false) . '/>';
-			echo '<span class="wpagent-slider"></span>';
-			echo '</label>';
-			echo '</div>';
-
-			echo '<div class="wpagent-toggle">';
-			echo '<div><strong>🌐 Fetch URL avant IA</strong><div class="wpagent-muted">Récupère un extrait de la page source pour ancrer la rédaction.</div></div>';
-			echo '<label class="wpagent-switch" aria-label="Fetch URL avant IA">';
-			echo '<input type="checkbox" name="fetch_source_before_ai" value="1"' . checked($fetch_source_before_ai, true, false) . '/>';
-			echo '<span class="wpagent-slider"></span>';
-			echo '</label>';
-			echo '</div>';
-
-			echo '<hr/>';
-
-			echo '<p><label for="provider"><strong>Provider</strong></label><br/>';
-			echo '<select name="provider" id="provider">';
-			echo '<option value="openrouter"' . selected($provider, 'openrouter', false) . '>OpenRouter</option>';
-			echo '<option value="gemini"' . selected($provider, 'gemini', false) . '>Gemini</option>';
-			echo '</select></p>';
-
-			echo '<p class="wpagent-muted" style="margin-top:0">Clés API: ';
-			echo '<a href="https://openrouter.ai/settings/keys" target="_blank" rel="noreferrer noopener">OpenRouter</a>';
-			echo ' · ';
-			echo '<a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer noopener">Gemini</a>';
-			echo '</p>';
-
-				echo '<div id="wpagent-provider-openrouter">';
-				echo '<p><label for="openrouter_api_key"><strong>API key</strong> (OpenRouter)</label><br/>';
-				echo '<input name="openrouter_api_key" id="openrouter_api_key" type="password" class="regular-text" value="" autocomplete="off" placeholder="Coller la clé (laisser vide pour conserver)"/></p>';
-				if ($openrouter_key_hint !== '') {
-					echo '<div class="wpagent-muted">Clé enregistrée: <code>' . esc_html($openrouter_key_hint) . '</code></div>';
-				}
-				echo '<input type="hidden" name="openrouter_model" id="openrouter_model" value="' . esc_attr($openrouter_model) . '"/>';
-				echo '</div>';
-
-				echo '<div id="wpagent-provider-gemini">';
-				echo '<p><label for="gemini_api_key"><strong>API key</strong> (Gemini)</label><br/>';
-				echo '<input name="gemini_api_key" id="gemini_api_key" type="password" class="regular-text" value="" autocomplete="off" placeholder="Coller la clé (laisser vide pour conserver)"/></p>';
-				if ($gemini_key_hint !== '') {
-					echo '<div class="wpagent-muted">Clé enregistrée: <code>' . esc_html($gemini_key_hint) . '</code></div>';
-				}
-				echo '<input type="hidden" name="gemini_model" id="gemini_model" value="' . esc_attr($gemini_model) . '"/>';
-				echo '</div>';
-
-				echo '<div class="wpagent-actions">';
-				echo '<button type="button" class="button" id="wpagentFetchModels">Récupérer les modèles</button>';
-				echo '<span class="spinner" id="wpagentFetchModelsSpinner"></span>';
-				echo '<span class="description" id="wpagentFetchModelsStatus"></span>';
-				echo '</div>';
-
-			echo '<p style="margin-top:10px;margin-bottom:0">';
-			echo '<select id="wpagentModelsSelect"><option value="">— modèles —</option></select>';
-			echo '<div id="wpagent-model-current"></div>';
-			echo '</p>';
-
-			echo '</form>';
-
-			echo '<hr/>';
-
-				echo '<h2>Token</h2>';
-				echo '<div class="wpagent-token-row" style="margin-top:0">';
-				echo '<code>' . esc_html($token) . '</code>';
-				echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0">';
-				wp_nonce_field('wpagent_regenerate_token', 'wpagent_regenerate_token_nonce');
-				echo '<input type="hidden" name="action" value="wpagent_regenerate_token"/>';
-				submit_button('Régénérer', 'secondary', 'wpagent_regenerate_token_submit', false);
-				echo '</form>';
-				echo '</div>';
-
-			echo '<hr/>';
-
-			echo '<h2>Endpoints</h2>';
-			echo '<ul style="margin:0;list-style:disc;padding-left:18px">';
-			echo '<li>Ajouter (GET/POST): <code>' . esc_html($inbox_url) . '</code></li>';
-			echo '<li>Liste (GET): <code>' . esc_html($topics_url) . '</code></li>';
-			echo '<li>Page capture: <code>' . esc_html($capture_url) . '</code></li>';
-			echo '<li>PWA: <code>' . esc_html($pwa_url) . '</code></li>';
-			echo '</ul>';
-
-			echo '<hr/>';
-
-			echo '<h2>Exemples</h2>';
-			echo '<p class="wpagent-muted" style="margin-top:0">GET (simple):</p>';
-			echo '<pre style="background:#fff;padding:10px;border:1px solid #dcdcde;max-width:100%;overflow:auto;margin:0 0 10px;">' .
-				esc_html($inbox_url . '?token=' . $token . '&text=' . rawurlencode('Idée d’article…')) .
-				'</pre>';
-			echo '<p class="wpagent-muted" style="margin:0">POST: token + text (+ url/source_title).</p>';
-
-			echo '</div>'; // wpagent-inspector
-
-			echo '</div>'; // postbox-container-1
-
-		echo '</div>'; // post-body
-		echo '</div>'; // poststuff
-		echo '</div>'; // wpagent-admin
-
-			echo '<script>
-					(function(){
-						const btn=document.getElementById("wpagentFetchModels");
-						const spinner=document.getElementById("wpagentFetchModelsSpinner");
-						const status=document.getElementById("wpagentFetchModelsStatus");
-						const provider=document.getElementById("provider");
-						const select=document.getElementById("wpagentModelsSelect");
-					const openrouterInput=document.getElementById("openrouter_model");
-					const geminiInput=document.getElementById("gemini_model");
-					const openrouterBlock=document.getElementById("wpagent-provider-openrouter");
-					const geminiBlock=document.getElementById("wpagent-provider-gemini");
-					const current=document.getElementById("wpagent-model-current");
-					const ajaxUrl=' . json_encode(admin_url('admin-ajax.php')) . ';
-					const nonce=' . json_encode($ajax_nonce) . ';
-
-					function setStatus(msg, ok){
-						status.textContent=msg||"";
-						status.style.color = ok ? "#1d7a2a" : "#b32d2e";
-					}
-					function setCurrentModelLabel(){
-						const p=(provider.value||"openrouter");
-						const val = (p==="gemini" ? (geminiInput && geminiInput.value) : (openrouterInput && openrouterInput.value)) || "";
-						if(current){
-							current.textContent = val ? ("Modèle sélectionné: " + val) : "";
-						}
-					}
-					function syncProviderUI(){
-						const p=(provider.value||"openrouter");
-						if(openrouterBlock) openrouterBlock.style.display = (p==="openrouter") ? "block" : "none";
-						if(geminiBlock) geminiBlock.style.display = (p==="gemini") ? "block" : "none";
-						setCurrentModelLabel();
-					}
-					function fillSelect(models){
-						select.innerHTML="";
-						const opt0=document.createElement("option");
-						opt0.value=""; opt0.textContent="— modèles ("+(models.length||0)+") —";
-						select.appendChild(opt0);
-						for(const m of models){
-							const o=document.createElement("option");
-							o.value=m; o.textContent=m;
-							select.appendChild(o);
-						}
-						// pré-sélection si un modèle est déjà enregistré
-						const p=(provider.value||"openrouter");
-						const saved = (p==="gemini" ? (geminiInput && geminiInput.value) : (openrouterInput && openrouterInput.value)) || "";
-						if(saved){
-							select.value = saved;
-						}
-					}
-
-					select.addEventListener("change",()=>{
-						if(!select.value){ setCurrentModelLabel(); return; }
-						const p=(provider.value||"openrouter");
-						if(p==="gemini"){ if(geminiInput) geminiInput.value = select.value; }
-						else { if(openrouterInput) openrouterInput.value = select.value; }
-						setCurrentModelLabel();
-					});
-
-					syncProviderUI();
-					setCurrentModelLabel();
-					provider.addEventListener("change",()=>{ syncProviderUI(); fillSelect([]); setStatus("", true); });
-					btn.addEventListener("click", async ()=>{
-						try{
-							setStatus("Chargement…", true);
-							btn.disabled=true;
-							if(spinner) spinner.classList.add("is-active");
-							const form=new URLSearchParams();
-							form.set("action","wpagent_fetch_models");
-							form.set("_ajax_nonce", nonce);
-						form.set("provider", provider.value||"openrouter");
-						const res=await fetch(ajaxUrl,{method:"POST",headers:{ "Content-Type":"application/x-www-form-urlencoded" },body:form.toString()});
-						const txt=await res.text();
-						let data; try{ data=JSON.parse(txt); }catch(e){ throw new Error("Réponse invalide"); }
-							if(!res.ok || !data || !data.ok){ throw new Error((data && data.message) ? data.message : "Erreur"); }
-							fillSelect(data.models||[]);
-							setStatus("OK ("+(data.models||[]).length+" modèles).", true);
-							setCurrentModelLabel();
-						}catch(e){
-							setStatus(e.message||"Erreur", false);
-						}finally{
-							btn.disabled=false;
-							if(spinner) spinner.classList.remove("is-active");
-						}
-						});
-					})();
-				</script>';
+		echo '<section class="wpagent-card">';
+		echo '<h2>Configuration</h2>';
+		echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+		wp_nonce_field('wpagent_save_settings', 'wpagent_save_settings_nonce');
+		echo '<input type="hidden" name="action" value="wpagent_save_settings"/>';
+		echo '<div class="wpagent-actions" style="justify-content:flex-end;margin:-4px 0 10px">';
+		submit_button('Enregistrer', 'primary', 'wpagent_save_settings_submit', false);
 		echo '</div>';
+
+		echo '<div class="wpagent-field">';
+		echo '<label for="system_prompt">🧠 Pré-prompt</label>';
+		echo '<div class="wpagent-muted">Astuce: si tu veux revenir au pré-prompt par défaut, clique “Réinitialiser”.</div>';
+		echo '<textarea name="system_prompt" id="system_prompt" class="large-text" rows="8">' . esc_textarea($system_prompt) . '</textarea>';
+		echo '<div class="wpagent-actions" style="margin-top:10px">';
+		submit_button('Réinitialiser', 'secondary', 'wpagent_reset_preprompt', false);
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div class="wpagent-toggle">';
+		echo '<div><strong>📝 Ouvrir le draft après génération</strong><div class="wpagent-muted">Sinon, tu restes sur la page WPagent.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Ouvrir le draft après génération">';
+		echo '<input type="checkbox" name="open_draft_after_generate" value="1"' . checked($open_after, true, false) . '/>';
+		echo '<span class="wpagent-slider"></span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wpagent-toggle">';
+		echo '<div><strong>🗂️ Afficher WPagent dans “Articles”</strong><div class="wpagent-muted">Ajoute WPagent comme sous-menu de Articles.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Afficher WPagent dans Articles">';
+		echo '<input type="checkbox" name="show_under_posts_menu" value="1"' . checked($show_under_posts_menu, true, false) . '/>';
+		echo '<span class="wpagent-slider"></span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wpagent-toggle">';
+		echo '<div><strong>🌐 Fetch URL avant IA</strong><div class="wpagent-muted">Récupère un extrait de la page source pour ancrer la rédaction.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Fetch URL avant IA">';
+		echo '<input type="checkbox" name="fetch_source_before_ai" value="1"' . checked($fetch_source_before_ai, true, false) . '/>';
+		echo '<span class="wpagent-slider"></span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wpagent-field">';
+		echo '<label for="provider">Provider</label>';
+		echo '<select name="provider" id="provider">';
+		echo '<option value="openrouter"' . selected($provider, 'openrouter', false) . '>OpenRouter</option>';
+		echo '<option value="gemini"' . selected($provider, 'gemini', false) . '>Gemini</option>';
+		echo '</select>';
+		echo '<div class="wpagent-muted" style="margin-top:6px">Clés API: ';
+		echo '<a href="https://openrouter.ai/settings/keys" target="_blank" rel="noreferrer noopener">OpenRouter</a>';
+		echo ' · ';
+		echo '<a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer noopener">Gemini</a>';
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div id="wpagent-provider-openrouter">';
+		echo '<div class="wpagent-field">';
+		echo '<label for="openrouter_api_key">API key (OpenRouter)</label>';
+		echo '<input name="openrouter_api_key" id="openrouter_api_key" type="password" class="regular-text" value="" autocomplete="off" placeholder="Coller la clé (laisser vide pour conserver)"/>';
+		if ($openrouter_key_hint !== '') {
+			echo '<div class="wpagent-muted" style="margin-top:6px">Clé enregistrée: <code>' . esc_html($openrouter_key_hint) . '</code></div>';
+		}
+		echo '<input type="hidden" name="openrouter_model" id="openrouter_model" value="' . esc_attr($openrouter_model) . '"/>';
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div id="wpagent-provider-gemini">';
+		echo '<div class="wpagent-field">';
+		echo '<label for="gemini_api_key">API key (Gemini)</label>';
+		echo '<input name="gemini_api_key" id="gemini_api_key" type="password" class="regular-text" value="" autocomplete="off" placeholder="Coller la clé (laisser vide pour conserver)"/>';
+		if ($gemini_key_hint !== '') {
+			echo '<div class="wpagent-muted" style="margin-top:6px">Clé enregistrée: <code>' . esc_html($gemini_key_hint) . '</code></div>';
+		}
+		echo '<input type="hidden" name="gemini_model" id="gemini_model" value="' . esc_attr($gemini_model) . '"/>';
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div class="wpagent-actions">';
+		echo '<button type="button" class="button" id="wpagentFetchModels">Récupérer les modèles</button>';
+		echo '<span class="spinner" id="wpagentFetchModelsSpinner"></span>';
+		echo '<span class="description" id="wpagentFetchModelsStatus"></span>';
+		echo '</div>';
+
+		echo '<div class="wpagent-field">';
+		echo '<select id="wpagentModelsSelect"><option value="">— modèles —</option></select>';
+		echo '<div id="wpagent-model-current"></div>';
+		echo '</div>';
+
+		echo '</form>';
+		echo '</section>';
+
+		echo '<section class="wpagent-card">';
+		echo '<h2>Accès</h2>';
+		echo '<div class="wpagent-field">';
+		echo '<label>Token</label>';
+		echo '<div class="wpagent-kv">';
+		echo '<code>' . esc_html($token) . '</code>';
+		echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0">';
+		wp_nonce_field('wpagent_regenerate_token', 'wpagent_regenerate_token_nonce');
+		echo '<input type="hidden" name="action" value="wpagent_regenerate_token"/>';
+		submit_button('Régénérer', 'secondary', 'wpagent_regenerate_token_submit', false);
+		echo '</form>';
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div class="wpagent-field wpagent-endpoints">';
+		echo '<label>Endpoints</label>';
+		echo '<div class="wpagent-muted">Token requis via paramètre <code>token</code>.</div>';
+		echo '<ul style="margin:10px 0 0;list-style:disc;padding-left:18px">';
+		echo '<li>Ajouter (GET/POST): <code>' . esc_html($inbox_url) . '</code></li>';
+		echo '<li>Liste (GET): <code>' . esc_html($topics_url) . '</code></li>';
+		echo '<li>Page capture: <code>' . esc_html($capture_url) . '</code></li>';
+		echo '<li>PWA: <code>' . esc_html($pwa_url) . '</code></li>';
+		echo '</ul>';
+		echo '</div>';
+
+		echo '<div class="wpagent-field">';
+		echo '<label>Exemple</label>';
+		echo '<pre style="background:#fff;padding:10px;border:1px solid #e5e7eb;border-radius:12px;max-width:100%;overflow:auto;margin:0">' .
+			esc_html($inbox_url . '?token=' . $token . '&text=' . rawurlencode('Idée d’article…')) .
+			'</pre>';
+		echo '<div class="wpagent-muted" style="margin-top:6px">POST: token + text (+ url/source_title).</div>';
+		echo '</div>';
+		echo '</section>';
+
+		echo '</aside>';
+		echo '</div>'; // layout
+		echo '</div>'; // wrap
 	}
 
 	public static function ajax_fetch_models(): void {

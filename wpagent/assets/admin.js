@@ -1,0 +1,139 @@
+(() => {
+  function qs(id) {
+    return document.getElementById(id);
+  }
+
+  function setStatus(el, msg, ok) {
+    if (!el) return;
+    el.textContent = msg || "";
+    el.style.color = ok ? "#166534" : "#b91c1c";
+  }
+
+  function init() {
+    const cfg = window.wpagentAdmin || {};
+    const btn = qs("wpagentFetchModels");
+    const spinner = qs("wpagentFetchModelsSpinner");
+    const status = qs("wpagentFetchModelsStatus");
+    const provider = qs("provider");
+    const select = qs("wpagentModelsSelect");
+    const openrouterInput = qs("openrouter_model");
+    const geminiInput = qs("gemini_model");
+    const openrouterBlock = qs("wpagent-provider-openrouter");
+    const geminiBlock = qs("wpagent-provider-gemini");
+    const current = qs("wpagent-model-current");
+
+    if (!provider) return;
+
+    function setCurrentModelLabel() {
+      const p = provider.value || "openrouter";
+      const val =
+        (p === "gemini"
+          ? geminiInput && geminiInput.value
+          : openrouterInput && openrouterInput.value) || "";
+      if (current) current.textContent = val ? `Modèle sélectionné: ${val}` : "";
+    }
+
+    function syncProviderUI() {
+      const p = provider.value || "openrouter";
+      if (openrouterBlock) openrouterBlock.style.display = p === "openrouter" ? "block" : "none";
+      if (geminiBlock) geminiBlock.style.display = p === "gemini" ? "block" : "none";
+      setCurrentModelLabel();
+    }
+
+    function fillSelect(models) {
+      if (!select) return;
+      select.innerHTML = "";
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = `— modèles (${models.length || 0}) —`;
+      select.appendChild(opt0);
+      for (const m of models) {
+        const o = document.createElement("option");
+        o.value = m;
+        o.textContent = m;
+        select.appendChild(o);
+      }
+
+      const p = provider.value || "openrouter";
+      const saved =
+        (p === "gemini"
+          ? geminiInput && geminiInput.value
+          : openrouterInput && openrouterInput.value) || "";
+      if (saved) select.value = saved;
+    }
+
+    provider.addEventListener("change", () => {
+      syncProviderUI();
+      fillSelect([]);
+      setStatus(status, "", true);
+    });
+
+    if (select) {
+      select.addEventListener("change", () => {
+        if (!select.value) {
+          setCurrentModelLabel();
+          return;
+        }
+        const p = provider.value || "openrouter";
+        if (p === "gemini") {
+          if (geminiInput) geminiInput.value = select.value;
+        } else {
+          if (openrouterInput) openrouterInput.value = select.value;
+        }
+        setCurrentModelLabel();
+      });
+    }
+
+    if (btn) {
+      btn.addEventListener("click", async () => {
+        try {
+          setStatus(status, "Chargement…", true);
+          btn.disabled = true;
+          if (spinner) spinner.classList.add("is-active");
+
+          const form = new URLSearchParams();
+          form.set("action", "wpagent_fetch_models");
+          form.set("_ajax_nonce", cfg.nonce || "");
+          form.set("provider", provider.value || "openrouter");
+
+          const res = await fetch(cfg.ajaxUrl || "", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: form.toString(),
+          });
+
+          const txt = await res.text();
+          let data;
+          try {
+            data = JSON.parse(txt);
+          } catch (e) {
+            throw new Error("Réponse invalide");
+          }
+
+          if (!res.ok || !data || !data.ok) {
+            throw new Error((data && data.message) || "Erreur");
+          }
+
+          fillSelect(data.models || []);
+          setStatus(status, `OK (${(data.models || []).length} modèles).`, true);
+          setCurrentModelLabel();
+        } catch (e) {
+          setStatus(status, e && e.message ? e.message : "Erreur", false);
+        } finally {
+          btn.disabled = false;
+          if (spinner) spinner.classList.remove("is-active");
+        }
+      });
+    }
+
+    syncProviderUI();
+    setCurrentModelLabel();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+
