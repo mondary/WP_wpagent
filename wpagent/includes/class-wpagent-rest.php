@@ -257,10 +257,10 @@ final class WPAgent_REST {
 		$token_esc = esc_attr($token);
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>';
-		$html .= '<title>WPA Agent — Capture</title>';
+			$html .= '<title>WPagent — Capture</title>';
 		$html .= '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:16px;max-width:720px}textarea,input{width:100%;font-size:16px;padding:10px;margin:8px 0}button{font-size:16px;padding:10px 14px}small{color:#555}</style>';
 		$html .= '</head><body>';
-		$html .= '<h1>WPA Agent — Capture</h1>';
+			$html .= '<h1>WPagent — Capture</h1>';
 		$html .= '<form method="post" action="' . $action_url . '">';
 		$html .= '<input type="hidden" name="token" value="' . $token_esc . '"/>';
 		$html .= '<label>Texte / idée</label><textarea name="text" rows="6" placeholder="Colle ici ton idée…"></textarea>';
@@ -403,7 +403,8 @@ final class WPAgent_REST {
 			.status.ok{color:var(--ok)} .status.err{color:var(--err)}
 			.items{margin-top:8px}
 			.item{padding:10px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);margin:8px 0}
-			.item b{display:block;margin-bottom:4px}
+				.item a{display:block;margin-bottom:4px;color:var(--text);text-decoration:none;font-weight:750}
+				.item a:active,.item a:focus,.item a:hover{text-decoration:underline}
 			code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:8px}
 		</style>';
 		$html .= '</head><body><div class="wrap">';
@@ -411,8 +412,7 @@ final class WPAgent_REST {
 		$html .= '<div class="card"><h2 style="margin:0;font-size:16px">Connexion</h2><p class="small">Saisis ton token une fois (stocké localement sur ton téléphone).</p>';
 		$html .= '<label>Token</label><input id="token" placeholder="colle le token"/>';
 		$html .= '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">';
-		$html .= '<button class="btn secondary" id="saveToken" type="button">Enregistrer</button>';
-		$html .= '<button class="btn secondary" id="clearToken" type="button">Effacer</button>';
+			$html .= '<button class="btn secondary" id="saveToken" type="button">Enregistrer</button>';
 		$html .= '</div><div id="tokenStatus" class="status"></div></div>';
 		$html .= '<div class="card"><h2 style="margin:0;font-size:16px">Ajouter un sujet</h2>';
 		$html .= '<label>Texte / idée</label><textarea id="text" placeholder="Écris ton idée…"></textarea>';
@@ -423,7 +423,7 @@ final class WPAgent_REST {
 		$html .= '<button class="btn secondary" id="refresh" type="button">Rafraîchir la liste</button>';
 		$html .= '</div><div id="sendStatus" class="status"></div>';
 		$html .= '<div class="items" id="items"></div></div>';
-		$html .= '<div class="card"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “WPA Agent”.</p>';
+			$html .= '<div class="card"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “WPagent”.</p>';
 		$html .= '<p class="small">API: <code>' . esc_html($inbox) . '</code> / <code>' . esc_html($topics) . '</code></p></div>';
 
 		$html .= '<script>
@@ -433,7 +433,7 @@ final class WPAgent_REST {
 			const $=(id)=>document.getElementById(id);
 			function getToken(){return localStorage.getItem("wpagent_token")||"";}
 			function setToken(t){localStorage.setItem("wpagent_token",t);}
-			function clearToken(){localStorage.removeItem("wpagent_token");}
+			// No "clear token" UI on purpose; overwrite token to change it.
 			function setStatus(el,msg,ok){el.textContent=msg;el.className="status "+(ok?"ok":"err");}
 			function esc(s){return (s||"").replace(/[&<>]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));}
 			async function addTopic(payload){
@@ -458,15 +458,48 @@ final class WPAgent_REST {
 				const items=data.items||[];
 				const root=$("items"); root.innerHTML="";
 				if(items.length===0){ root.innerHTML="<p class=\\"small\\">Aucun sujet pour le moment.</p>"; return; }
-				for(const it of items){
-					const div=document.createElement("div"); div.className="item";
-					div.innerHTML="<b>"+esc(it.title||("Sujet #"+it.id))+"</b><div class=\\"small\\">"+esc((it.content||"").slice(0,180))+"</div>";
-					root.appendChild(div);
+					function pickUrl(it){
+						const source=(it && it.source_url ? String(it.source_url) : "").trim();
+						if(source) return source;
+						const combined=String((it && it.content) || "") + "\\n" + String((it && it.title) || "");
+						const m=combined.match(/https?:\\/\\/[^\\s)\\]}>"\']+/i);
+						return m ? m[0] : "";
+					}
+
+					for(const it of items){
+						const div=document.createElement("div"); div.className="item";
+						const url=pickUrl(it);
+						const label=(String((it && it.source_title) || "").trim()) || (String((it && it.title) || "").trim()) || (url ? url : ("Sujet #"+it.id));
+
+						const a=document.createElement("a");
+						a.href = url || "#";
+						a.textContent = label;
+						if(url){
+							a.target="_blank";
+							a.rel="noreferrer";
+						}else{
+							a.addEventListener("click",(e)=>e.preventDefault());
+						}
+						div.appendChild(a);
+
+						const meta=document.createElement("div"); meta.className="small";
+						const parts=[];
+						if(url && label !== url) parts.push(url);
+						if(it && it.created_at) parts.push(String(it.created_at).slice(0,10));
+						meta.textContent = parts.join(" · ");
+						div.appendChild(meta);
+						root.appendChild(div);
+					}
 				}
-			}
-			$("token").value=getToken();
-			$("saveToken").addEventListener("click",()=>{ setToken($("token").value.trim()); setStatus($("tokenStatus"),"Token enregistré.",true); });
-			$("clearToken").addEventListener("click",()=>{ clearToken(); $("token").value=""; setStatus($("tokenStatus"),"Token effacé.",true); });
+				$("token").value=getToken();
+				$("saveToken").addEventListener("click",async()=>{
+					const token=$("token").value.trim();
+					if(!token){ setStatus($("tokenStatus"),"Colle ton token.",false); $("token").focus(); return; }
+					setToken(token);
+					setStatus($("tokenStatus"),"Token enregistré.",true);
+					try{ await refresh(); }catch(e){}
+					try{ await consumeShareIfAny(); }catch(e){}
+				});
 			$("send").addEventListener("click",async()=>{
 				try{
 					setStatus($("sendStatus"),"Envoi…",true);
@@ -503,10 +536,11 @@ final class WPAgent_REST {
 				$("url").value = url;
 				$("source_title").value = title;
 
-				if(!token){
-					setStatus($("sendStatus"),"Contenu partagé détecté. Ajoute ton token puis clique “Ajouter à l’inbox”.",false);
-					return;
-				}
+					if(!token){
+						setStatus($("tokenStatus"),"Contenu partagé détecté. Colle ton token puis clique “Enregistrer”.",false);
+						$("token").focus();
+						return;
+					}
 
 				try{
 					setStatus($("sendStatus"),"Ajout automatique (partage)…",true);
