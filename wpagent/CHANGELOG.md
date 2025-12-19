@@ -14,6 +14,63 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.1.4 - 2025-12-18
 - Plugins list: more robust icon injection (works better with plugins that tweak the plugins table markup).
 
+## 0.1.5 - 2025-12-18
+- Admin: switched layout to ~80/20 (main wider, config sidebar hugs the right edge).
+
+## 0.1.6 - 2025-12-18
+- Admin: improved link affordance (draft links look clickable again).
+
+## 0.1.7 - 2025-12-19
+- Admin: fixed sidebar overlap by constraining main column overflow in the 2-column layout.
+
+## 0.1.8 - 2025-12-19
+- Topics ordering: enforced newest-first deterministically (prevents other plugins from altering query order).
+
+## 0.1.9 - 2025-12-19
+- Default system prompt: updated to the new “🎯 RÔLE” version (with migration from the previous default).
+
+## 0.1.10 - 2025-12-19
+- Admin: config inspector now stays visible while scrolling (sticky sidebar with its own scroll).
+
+## 0.1.11 - 2025-12-19
+- Admin: fixed sidebar overlap by forcing table content to wrap (fixed table layout + column widths).
+
+## 0.2.0 - 2025-12-19
+- Versioning: moved to the 0.2.x line.
+
+## 0.2.1 - 2025-12-19
+- Admin: non-blocking draft generation with per-row loader + Chrome tab title indicator while generating.
+
+## 0.2.2 - 2025-12-19
+- AI: default system prompt and generation constraints now forbid Markdown output (no #, **, etc.).
+
+## 0.2.3 - 2025-12-19
+- AI: default prompt now forbids using the raw submitted URL/text as the article title.
+
+## 0.2.4 - 2025-12-19
+- Admin: URLs in the “Sujets” list are now clickable (opens in a new tab).
+
+## 0.2.5 - 2025-12-19
+- Admin: added a minimal sticky header with toggles (icons) to show/hide config sections.
+
+## 0.2.6 - 2025-12-19
+- Admin: draft generation loader is now spinner-only (no status text, spinner placed left of the button to avoid layout shifts).
+
+## 0.2.7 - 2025-12-19
+- Admin: moved “Enregistrer” button into the sticky header next to the section toggles.
+
+## 0.2.8 - 2025-12-19
+- Admin: header is now full-width, flush to edges, and non-rounded.
+
+## 0.2.9 - 2025-12-19
+- Admin: the 3 main options toggles (open draft, show under Posts, fetch URL) are now always visible.
+
+## 0.2.10 - 2025-12-19
+- Topics list: order and displayed date now use the submission timestamp (`_wpagent_captured_at`) so newest topics appear first.
+
+## 0.2.11 - 2025-12-19
+- Admin: removed the “Options” (gear) toggle since that section is always visible.
+
 ## 0.1.1 - 2025-12-18
 - Admin: new minimal full-white UI; CSS/JS extracted into `assets/admin.css` and `assets/admin.js`.
 - PWA + capture page: switched to a minimal white theme.

@@ -111,7 +111,8 @@ final class WPAgent_AI {
 		return $system . "\n\n" .
 			"Contraintes:\n" .
 			"- Réponds en français.\n" .
-			"- Structure en Markdown (titres, listes) adapté à un brouillon WordPress.\n" .
+			"- Interdiction d'utiliser du Markdown (pas de #, **, listes Markdown, etc.). Réponds en texte brut.\n" .
+			"- Le titre ne doit jamais être une URL (ni une simple reprise du texte soumis). Il doit être informatif et commencer par le nom exact de l'outil.\n" .
 			"- Interdiction de produire un gabarit générique (pas de texte du type \"[Section 1]\", pas de crochets, pas de placeholders).\n" .
 			"- Le brouillon doit être spécifique au sujet fourni; si une URL/extrait est présent, tu dois t'y ancrer (nom, fonctionnalités, public cible, etc.).\n" .
 			"- Si l'information de la source est insuffisante, dis-le explicitement et propose une liste de questions/axes de recherche, sans inventer.\n" .

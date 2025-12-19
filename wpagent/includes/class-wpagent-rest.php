@@ -225,19 +225,28 @@ final class WPAgent_REST {
 				'post_type' => WPAgent_Post_Type::POST_TYPE,
 				'post_status' => ['draft', 'private', 'pending'],
 				'posts_per_page' => $limit,
-				'orderby' => 'date',
-				'order' => 'DESC',
+				'meta_key' => '_wpagent_captured_at',
+				'orderby' => [
+					'meta_value_num' => 'DESC',
+					'date' => 'DESC',
+				],
 				'no_found_rows' => true,
+				// Make ordering deterministic even if other plugins add query filters.
+				'suppress_filters' => true,
 			]
 		);
 
 		$items = [];
 		foreach ($query->posts as $post) {
+			$captured_ts = (int) get_post_meta($post->ID, '_wpagent_captured_at', true);
+			if ($captured_ts <= 0) {
+				$captured_ts = (int) get_post_timestamp($post);
+			}
 			$items[] = [
 				'id' => (int) $post->ID,
 				'title' => (string) get_the_title($post),
 				'content' => (string) $post->post_content,
-				'created_at' => (string) get_the_date('c', $post),
+				'created_at' => function_exists('wp_date') ? (string) wp_date('c', $captured_ts) : (string) get_the_date('c', $post),
 				'source_url' => (string) get_post_meta($post->ID, '_wpagent_source_url', true),
 				'source_title' => (string) get_post_meta($post->ID, '_wpagent_source_title', true),
 			];

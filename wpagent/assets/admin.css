@@ -1,5 +1,5 @@
 .wpagent-admin {
-	max-width: 1200px;
+	max-width: 1400px;
 }
 
 body.wpagent-admin-page #wpcontent,
@@ -27,6 +27,118 @@ body.wpagent-admin-page #wpbody-content {
 	margin: 10px 0 6px;
 }
 
+.wpagent-topbar {
+	position: sticky;
+	top: 32px;
+	z-index: 60;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 20px;
+	border-top: 0;
+	border-left: 0;
+	border-right: 0;
+	border-bottom: 1px solid var(--wpagent-border);
+	border-radius: 0;
+	background: #fff;
+	margin: 0 -20px 14px;
+}
+
+.wpagent-topbar-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.wpagent-topbar-logo {
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	flex: 0 0 auto;
+}
+
+.wpagent-topbar-title {
+	min-width: 0;
+}
+
+.wpagent-topbar-name {
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.1;
+}
+
+.wpagent-topbar-subtitle {
+	font-size: 12px;
+	color: var(--wpagent-muted);
+	line-height: 1.2;
+	margin-top: 2px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 520px;
+}
+
+.wpagent-topbar-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 0 0 auto;
+}
+
+.wpagent-topbar-actions .button {
+	margin: 0;
+}
+
+.wpagent-icon-btn {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--wpagent-border);
+	border-radius: 12px;
+	background: var(--wpagent-soft);
+	color: var(--wpagent-text);
+	cursor: pointer;
+}
+
+.wpagent-icon-btn:hover,
+.wpagent-icon-btn:focus {
+	background: #e5e7eb;
+	border-color: #d1d5db;
+}
+
+.wpagent-icon-btn[aria-pressed="false"] {
+	opacity: 0.55;
+}
+
+.wpagent-icon-btn[aria-disabled="true"] {
+	cursor: default;
+	opacity: 0.8;
+}
+
+.wpagent-hidden {
+	display: none !important;
+}
+
+.wpagent-admin-page .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
+
+@media (max-width: 782px) {
+	.wpagent-topbar {
+		top: 46px;
+	}
+	.wpagent-topbar-subtitle {
+		display: none;
+	}
+}
+
 .wpagent-header img {
 	width: 28px;
 	height: 28px;
@@ -40,15 +152,47 @@ body.wpagent-admin-page #wpbody-content {
 
 .wpagent-layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 340px;
+	/* 80/20 layout on large screens */
+	grid-template-columns: minmax(0, 4fr) minmax(260px, 1fr);
 	gap: 18px;
 	align-items: start;
+	overflow: visible;
 }
 
 @media (max-width: 1080px) {
 	.wpagent-layout {
 		grid-template-columns: 1fr;
 	}
+}
+
+.wpagent-main {
+	min-width: 0;
+}
+
+.wpagent-table {
+	width: 100%;
+	table-layout: fixed;
+}
+
+.wpagent-table th:nth-child(1) {
+	width: 56%;
+}
+.wpagent-table th:nth-child(2) {
+	width: 24%;
+}
+.wpagent-table th:nth-child(3) {
+	width: 20%;
+}
+
+.wpagent-table td,
+.wpagent-table th {
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+.wpagent-table td:last-child,
+.wpagent-table th:last-child {
+	white-space: nowrap;
 }
 
 .wpagent-card {
@@ -75,10 +219,15 @@ body.wpagent-admin-page #wpbody-content {
 
 .wpagent-admin-page .wpagent-admin a {
 	color: var(--wpagent-accent);
+	text-decoration: underline;
+	text-decoration-color: rgba(17, 24, 39, 0.35);
+	text-underline-offset: 2px;
+	text-decoration-thickness: 1px;
 }
 
 .wpagent-admin-page .wpagent-admin a:hover {
 	color: #000;
+	text-decoration-color: #000;
 }
 
 .wpagent-admin-page .wpagent-admin .notice {
@@ -100,6 +249,17 @@ body.wpagent-admin-page #wpbody-content {
 .wpagent-admin-page .wpagent-admin .button-primary:focus {
 	background: #000;
 	border-color: #000;
+}
+
+.wpagent-inline-spinner {
+	float: none;
+	margin: 0 6px 0 0;
+	vertical-align: middle;
+}
+
+.wpagent-generate-form.has-error .button-primary {
+	outline: 2px solid #b91c1c;
+	outline-offset: 2px;
 }
 
 .wpagent-admin-page .wpagent-admin .button-secondary,
@@ -230,6 +390,13 @@ body.wpagent-admin-page #wpbody-content {
 .wpagent-sidebar {
 	position: sticky;
 	top: 48px;
+	max-width: 360px;
+	justify-self: end;
+	align-self: start;
+	max-height: calc(100vh - 64px);
+	overflow: auto;
+	width: 100%;
+	min-width: 0;
 }
 
 @media (max-width: 1080px) {

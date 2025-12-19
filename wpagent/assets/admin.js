@@ -26,6 +26,49 @@
 
     if (!provider) return;
 
+    // Header section toggles (persisted in localStorage).
+    const storageKey = "wpagent_admin_sections_v1";
+    const defaultSections = { prompt: true, provider: true, access: true };
+    let sectionState = { ...defaultSections };
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) sectionState = { ...defaultSections, ...JSON.parse(raw) };
+    } catch (e) {}
+
+    function applySectionState() {
+      document.querySelectorAll("[data-wpagent-section]").forEach((el) => {
+        const key = el.getAttribute("data-wpagent-section");
+        const visible = sectionState[key] !== false;
+        el.classList.toggle("wpagent-hidden", !visible);
+      });
+      document.querySelectorAll("[data-wpagent-toggle]").forEach((btn) => {
+        const key = btn.getAttribute("data-wpagent-toggle");
+        const pressed = sectionState[key] !== false;
+        btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+      });
+    }
+
+    document.querySelectorAll("[data-wpagent-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-wpagent-toggle");
+        if (!key) return;
+        sectionState[key] = !(sectionState[key] !== false);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(sectionState));
+        } catch (e) {}
+        applySectionState();
+      });
+    });
+
+    applySectionState();
+
+    const originalTitle = document.title;
+    let runningCount = 0;
+    function setRunning(delta) {
+      runningCount = Math.max(0, runningCount + delta);
+      document.title = runningCount > 0 ? `(${runningCount}) ${originalTitle}` : originalTitle;
+    }
+
     function setCurrentModelLabel() {
       const p = provider.value || "openrouter";
       const val =
@@ -136,6 +179,88 @@
         }
       });
     }
+
+    // Non-blocking draft generation per row (allows multiple in parallel).
+    document.querySelectorAll("form.wpagent-generate-form").forEach((form) => {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (form.dataset.running === "1") return;
+
+        const topicId = form.getAttribute("data-topic-id") || "";
+        const nonce = form.getAttribute("data-nonce") || "";
+        if (!topicId || !nonce) return;
+
+        const button = form.querySelector('input[type="submit"],button[type="submit"]');
+        const rowSpinner = form.querySelector(".wpagent-inline-spinner");
+
+        try {
+          form.dataset.running = "1";
+          form.classList.remove("has-error");
+          setRunning(+1);
+          if (button) button.disabled = true;
+          if (rowSpinner) rowSpinner.classList.add("is-active");
+
+          const payload = new URLSearchParams();
+          payload.set("action", "wpagent_generate_draft");
+          payload.set("topic_id", topicId);
+          payload.set("nonce", nonce);
+
+          const res = await fetch(cfg.ajaxUrl || "", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: payload.toString(),
+          });
+
+          const txt = await res.text();
+          let data;
+          try {
+            data = JSON.parse(txt);
+          } catch (err) {
+            throw new Error("Réponse invalide");
+          }
+          if (!res.ok || !data || !data.ok) {
+            throw new Error((data && data.message) || "Erreur");
+          }
+
+          const draftId = data.draft_id;
+          const editUrl = data.edit_url || "";
+
+          // Update Draft column in the same row.
+          const tr = form.closest("tr");
+          if (tr) {
+            const tds = tr.querySelectorAll("td");
+            const draftCell = tds && tds.length >= 2 ? tds[1] : null;
+            if (draftCell && draftId && editUrl) {
+              const a = document.createElement("a");
+              a.href = editUrl;
+              a.textContent = `Draft #${draftId}`;
+              if (draftCell.textContent.trim() === "—") {
+                draftCell.textContent = "";
+                draftCell.appendChild(a);
+              } else {
+                draftCell.appendChild(document.createElement("br"));
+                draftCell.appendChild(a);
+              }
+            }
+          }
+
+          if (button) button.title = "";
+
+          // Optional behavior: open the draft in a new tab.
+          if (cfg.openDraftAfterGenerate && editUrl) {
+            window.open(editUrl, "_blank", "noopener,noreferrer");
+          }
+        } catch (err) {
+          form.classList.add("has-error");
+          if (button) button.title = err && err.message ? err.message : "Erreur";
+        } finally {
+          setRunning(-1);
+          form.dataset.running = "0";
+          if (button) button.disabled = false;
+          if (rowSpinner) rowSpinner.classList.remove("is-active");
+        }
+      });
+    });
 
     syncProviderUI();
     setCurrentModelLabel();

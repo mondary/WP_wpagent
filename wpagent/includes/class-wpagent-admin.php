@@ -23,6 +23,7 @@ final class WPAgent_Admin {
 		add_action('add_meta_boxes', [self::class, 'topic_meta_boxes'], 10, 2);
 
 		add_action('wp_ajax_wpagent_fetch_models', [self::class, 'ajax_fetch_models']);
+		add_action('wp_ajax_wpagent_generate_draft', [self::class, 'ajax_generate_draft']);
 
 		// Ajoute un lien WPagent dans "Tous les articles".
 		add_filter('views_edit-post', [self::class, 'posts_list_add_wpagent_link']);
@@ -127,6 +128,7 @@ final class WPAgent_Admin {
 			[
 				'ajaxUrl' => admin_url('admin-ajax.php'),
 				'nonce' => wp_create_nonce('wpagent_fetch_models'),
+				'openDraftAfterGenerate' => WPAgent_Settings::open_draft_after_generate(),
 			]
 		);
 	}
@@ -397,6 +399,57 @@ final class WPAgent_Admin {
 		return $kept;
 	}
 
+	private static function normalize_url(string $url): string {
+		$url = trim($url);
+		if ($url === '') {
+			return '';
+		}
+		$url = esc_url_raw($url);
+		return $url !== '' ? $url : '';
+	}
+
+	private static function extract_first_url(string $text): string {
+		$text = trim($text);
+		if ($text === '') {
+			return '';
+		}
+		if (function_exists('wp_extract_urls')) {
+			$urls = (array) wp_extract_urls($text);
+			if ($urls) {
+				return self::normalize_url((string) $urls[0]);
+			}
+		}
+		if (preg_match('#https?://[^\s<>"\']+#i', $text, $m)) {
+			return self::normalize_url((string) $m[0]);
+		}
+		return '';
+	}
+
+	private static function get_topic_source_url(\WP_Post $topic): string {
+		$meta = (string) get_post_meta($topic->ID, '_wpagent_source_url', true);
+		$meta = self::normalize_url($meta);
+		if ($meta !== '') {
+			return $meta;
+		}
+
+		// Fall back: if user pasted a URL as the whole subject, try title/content.
+		$title = self::normalize_url((string) $topic->post_title);
+		if ($title !== '') {
+			return $title;
+		}
+		return self::extract_first_url((string) $topic->post_content);
+	}
+
+	private static function get_topic_captured_at_ts(\WP_Post $topic): int {
+		$ts = (int) get_post_meta($topic->ID, '_wpagent_captured_at', true);
+		if ($ts > 0) {
+			return $ts;
+		}
+		// Back-compat: fall back to post date if meta is missing.
+		$post_ts = (int) get_post_timestamp($topic);
+		return $post_ts > 0 ? $post_ts : time();
+	}
+
 	public static function topic_columns(array $columns): array {
 		// Injecte des colonnes utiles avant "date".
 		$new = [];
@@ -514,13 +567,23 @@ final class WPAgent_Admin {
 		$fetch_source_before_ai = WPAgent_Settings::fetch_source_before_ai();
 
 		echo '<div class="wrap wpagent-admin">';
-		echo '<div class="wpagent-header">';
+		echo '<div class="wpagent-topbar">';
+		echo '<div class="wpagent-topbar-left">';
 		if ($icon_url !== '') {
-			echo '<img src="' . esc_url($icon_url) . '" alt="" />';
+			echo '<img class="wpagent-topbar-logo" src="' . esc_url($icon_url) . '" alt="" />';
 		}
-		echo '<h1 style="margin:0">WPagent</h1>';
+		echo '<div class="wpagent-topbar-title">';
+		echo '<div class="wpagent-topbar-name">WPagent</div>';
+		echo '<div class="wpagent-topbar-subtitle">Inbox → IA → drafts WordPress</div>';
 		echo '</div>';
-		echo '<p class="wpagent-subtitle">Capture rapide de sujets (inbox) → génération IA → drafts WordPress.</p>';
+		echo '</div>';
+		echo '<div class="wpagent-topbar-actions" role="group" aria-label="Afficher/Masquer les sections">';
+		echo '<button type="submit" form="wpagent-settings-form" class="button button-primary" title="Enregistrer la configuration">Enregistrer</button>';
+		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-toggle="prompt" aria-pressed="true" title="Afficher/Masquer: Pré-prompt"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">Pré-prompt</span></button>';
+		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-toggle="provider" aria-pressed="true" title="Afficher/Masquer: Provider & modèle"><span class="dashicons dashicons-cloud" aria-hidden="true"></span><span class="screen-reader-text">Provider</span></button>';
+		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-toggle="access" aria-pressed="true" title="Afficher/Masquer: Accès & endpoints"><span class="dashicons dashicons-shield" aria-hidden="true"></span><span class="screen-reader-text">Accès</span></button>';
+		echo '</div>';
+		echo '</div>';
 
 		if (isset($_GET['updated'])) {
 			echo '<div class="notice notice-success"><p>Réglages enregistrés.</p></div>';
@@ -582,14 +645,19 @@ final class WPAgent_Admin {
 			}
 			echo '</h3>';
 
-			$args = [
-				'post_type' => WPAgent_Post_Type::POST_TYPE,
-				'post_status' => ['draft', 'private', 'pending'],
-				'posts_per_page' => 20,
-				'orderby' => 'date',
-				'order' => 'DESC',
-				'no_found_rows' => true,
-			];
+				$args = [
+					'post_type' => WPAgent_Post_Type::POST_TYPE,
+					'post_status' => ['draft', 'private', 'pending'],
+					'posts_per_page' => 20,
+					'meta_key' => '_wpagent_captured_at',
+					'orderby' => [
+						'meta_value_num' => 'DESC',
+						'date' => 'DESC',
+					],
+					'no_found_rows' => true,
+					// Make ordering deterministic even if other plugins add query filters.
+					'suppress_filters' => true,
+				];
 
 			if ($filter === 'generated') {
 				$args['meta_query'] = [
@@ -625,34 +693,62 @@ final class WPAgent_Admin {
 			echo '<table class="widefat striped wpagent-table"><thead><tr>';
 			echo '<th>Sujet</th><th>Draft</th><th style="text-align:right">Action</th>';
 			echo '</tr></thead><tbody>';
-			foreach ($query->posts as $topic) {
-				$topic_id = (int) $topic->ID;
-				$draft_ids = self::get_topic_draft_ids($topic_id);
+				foreach ($query->posts as $topic) {
+					$topic_id = (int) $topic->ID;
+					$draft_ids = self::get_topic_draft_ids($topic_id);
+					$source_url = self::get_topic_source_url($topic);
+					$title = (string) get_the_title($topic);
+					$edit_topic_url = get_edit_post_link($topic_id, 'url');
+					$captured_ts = self::get_topic_captured_at_ts($topic);
+					$captured_label = function_exists('wp_date')
+						? wp_date((string) get_option('date_format'), $captured_ts)
+						: date_i18n((string) get_option('date_format'), $captured_ts);
 
-				echo '<tr>';
-				echo '<td><strong>' . esc_html(get_the_title($topic)) . '</strong><br/><span class="wpagent-muted">' . esc_html(get_the_date('', $topic)) . '</span></td>';
-				if (!$draft_ids) {
-					echo '<td>—</td>';
-				} else {
-					$links = [];
-					foreach ($draft_ids as $draft_id) {
-						$link = get_edit_post_link($draft_id, 'url');
-						if ($link) {
-							$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
+					echo '<tr>';
+					echo '<td>';
+					echo '<strong>';
+					// If the title itself is a URL, make it directly clickable (external) and keep an "Éditer" link.
+					if ($source_url !== '' && self::normalize_url($title) === $source_url) {
+						echo '<a href="' . esc_url($source_url) . '" target="_blank" rel="noreferrer noopener">' . esc_html($title) . '</a>';
+						if ($edit_topic_url) {
+							echo ' <span class="wpagent-muted">· <a href="' . esc_url($edit_topic_url) . '">Éditer</a></span>';
+						}
+					} else {
+						if ($edit_topic_url) {
+							echo '<a href="' . esc_url($edit_topic_url) . '">' . esc_html($title) . '</a>';
+						} else {
+							echo esc_html($title);
 						}
 					}
-					echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
+					echo '</strong>';
+					echo '<br/><span class="wpagent-muted">' . esc_html($captured_label) . '</span>';
+					if ($source_url !== '' && self::normalize_url($title) !== $source_url) {
+						echo '<div class="wpagent-muted"><a href="' . esc_url($source_url) . '" target="_blank" rel="noreferrer noopener">' . esc_html($source_url) . '</a></div>';
+					}
+					echo '</td>';
+					if (!$draft_ids) {
+						echo '<td>—</td>';
+					} else {
+						$links = [];
+						foreach ($draft_ids as $draft_id) {
+							$link = get_edit_post_link($draft_id, 'url');
+							if ($link) {
+								$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
+							}
+						}
+						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
+					}
+					echo '<td style="text-align:right">';
+					echo '<form class="wpagent-generate-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0;display:inline-block" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr(wp_create_nonce('wpagent_generate_draft_' . $topic_id)) . '">';
+					wp_nonce_field('wpagent_generate_draft_' . $topic_id, 'wpagent_generate_draft_nonce_' . $topic_id);
+					echo '<input type="hidden" name="action" value="wpagent_generate_draft"/>';
+					echo '<input type="hidden" name="topic_id" value="' . (int) $topic_id . '"/>';
+					echo '<span class="spinner wpagent-inline-spinner" aria-hidden="true"></span>';
+					submit_button('Générer un draft', 'primary', 'wpagent_generate_draft_submit_' . $topic_id, false);
+					echo '</form>';
+					echo '</td>';
+					echo '</tr>';
 				}
-				echo '<td style="text-align:right">';
-				echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0;display:inline-block">';
-				wp_nonce_field('wpagent_generate_draft_' . $topic_id, 'wpagent_generate_draft_nonce_' . $topic_id);
-				echo '<input type="hidden" name="action" value="wpagent_generate_draft"/>';
-				echo '<input type="hidden" name="topic_id" value="' . (int) $topic_id . '"/>';
-				submit_button('Générer un draft', 'primary', 'wpagent_generate_draft_submit_' . $topic_id, false);
-				echo '</form>';
-				echo '</td>';
-				echo '</tr>';
-			}
 			echo '</tbody></table>';
 		}
 
@@ -663,13 +759,11 @@ final class WPAgent_Admin {
 
 		echo '<section class="wpagent-card">';
 		echo '<h2>Configuration</h2>';
-		echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+		echo '<form id="wpagent-settings-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
 		wp_nonce_field('wpagent_save_settings', 'wpagent_save_settings_nonce');
 		echo '<input type="hidden" name="action" value="wpagent_save_settings"/>';
-		echo '<div class="wpagent-actions" style="justify-content:flex-end;margin:-4px 0 10px">';
-		submit_button('Enregistrer', 'primary', 'wpagent_save_settings_submit', false);
-		echo '</div>';
 
+		echo '<div id="wpagent-section-prompt" data-wpagent-section="prompt">';
 		echo '<div class="wpagent-field">';
 		echo '<label for="system_prompt">🧠 Pré-prompt</label>';
 		echo '<div class="wpagent-muted">Astuce: si tu veux revenir au pré-prompt par défaut, clique “Réinitialiser”.</div>';
@@ -678,7 +772,9 @@ final class WPAgent_Admin {
 		submit_button('Réinitialiser', 'secondary', 'wpagent_reset_preprompt', false);
 		echo '</div>';
 		echo '</div>';
+		echo '</div>';
 
+		echo '<div id="wpagent-section-options" data-wpagent-section="options">';
 		echo '<div class="wpagent-toggle">';
 		echo '<div><strong>📝 Ouvrir le draft après génération</strong><div class="wpagent-muted">Sinon, tu restes sur la page WPagent.</div></div>';
 		echo '<label class="wpagent-switch" aria-label="Ouvrir le draft après génération">';
@@ -702,7 +798,9 @@ final class WPAgent_Admin {
 		echo '<span class="wpagent-slider"></span>';
 		echo '</label>';
 		echo '</div>';
+		echo '</div>';
 
+		echo '<div id="wpagent-section-provider" data-wpagent-section="provider">';
 		echo '<div class="wpagent-field">';
 		echo '<label for="provider">Provider</label>';
 		echo '<select name="provider" id="provider">';
@@ -749,10 +847,12 @@ final class WPAgent_Admin {
 		echo '<div id="wpagent-model-current"></div>';
 		echo '</div>';
 
+		echo '</div>';
+
 		echo '</form>';
 		echo '</section>';
 
-		echo '<section class="wpagent-card">';
+		echo '<section id="wpagent-section-access" data-wpagent-section="access" class="wpagent-card">';
 		echo '<h2>Accès</h2>';
 		echo '<div class="wpagent-field">';
 		echo '<label>Token</label>';
@@ -821,6 +921,39 @@ final class WPAgent_Admin {
 		}
 
 		wp_send_json(['ok' => true, 'provider' => $provider, 'models' => $result], 200);
+	}
+
+	public static function ajax_generate_draft(): void {
+		if (!current_user_can('edit_posts')) {
+			wp_send_json(['ok' => false, 'message' => 'Forbidden'], 403);
+		}
+
+		$topic_id = isset($_POST['topic_id']) ? (int) $_POST['topic_id'] : 0;
+		if ($topic_id <= 0) {
+			wp_send_json(['ok' => false, 'message' => 'Topic manquant.'], 400);
+		}
+
+		$nonce = isset($_POST['nonce']) ? (string) wp_unslash($_POST['nonce']) : '';
+		if ($nonce === '' || !wp_verify_nonce($nonce, 'wpagent_generate_draft_' . $topic_id)) {
+			wp_send_json(['ok' => false, 'message' => 'Nonce invalide.'], 403);
+		}
+
+		$result = WPAgent_AI::generate_draft_from_topic($topic_id);
+		if (is_wp_error($result)) {
+			wp_send_json(['ok' => false, 'message' => $result->get_error_message()], 400);
+		}
+
+		$draft_id = (int) $result;
+		$edit_url = get_edit_post_link($draft_id, 'url');
+
+		wp_send_json(
+			[
+				'ok' => true,
+				'draft_id' => $draft_id,
+				'edit_url' => $edit_url ? (string) $edit_url : '',
+			],
+			200
+		);
 	}
 
 	/**
