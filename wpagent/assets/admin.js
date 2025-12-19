@@ -26,41 +26,41 @@
 
     if (!provider) return;
 
-    // Header section toggles (persisted in localStorage).
-    const storageKey = "wpagent_admin_sections_v1";
-    const defaultSections = { prompt: true, provider: true, access: true };
-    let sectionState = { ...defaultSections };
+    // Header panel switcher (persisted in localStorage).
+    const panelStorageKey = "wpagent_admin_panel_v1";
+    const panels = ["prompt", "provider", "access"];
+    let activePanel = "prompt";
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) sectionState = { ...defaultSections, ...JSON.parse(raw) };
+      const raw = localStorage.getItem(panelStorageKey);
+      if (raw && panels.includes(raw)) activePanel = raw;
     } catch (e) {}
 
-    function applySectionState() {
-      document.querySelectorAll("[data-wpagent-section]").forEach((el) => {
-        const key = el.getAttribute("data-wpagent-section");
-        const visible = sectionState[key] !== false;
-        el.classList.toggle("wpagent-hidden", !visible);
+    function applyActivePanel() {
+      document.querySelectorAll("[data-wpagent-panel-content]").forEach((el) => {
+        const key = el.getAttribute("data-wpagent-panel-content");
+        el.classList.toggle("wpagent-hidden", key !== activePanel);
       });
-      document.querySelectorAll("[data-wpagent-toggle]").forEach((btn) => {
-        const key = btn.getAttribute("data-wpagent-toggle");
-        const pressed = sectionState[key] !== false;
-        btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+      document.querySelectorAll("[data-wpagent-panel]").forEach((btn) => {
+        const key = btn.getAttribute("data-wpagent-panel");
+        const isActive = key === activePanel;
+        btn.setAttribute("aria-selected", isActive ? "true" : "false");
+        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
       });
     }
 
-    document.querySelectorAll("[data-wpagent-toggle]").forEach((btn) => {
+    document.querySelectorAll("[data-wpagent-panel]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const key = btn.getAttribute("data-wpagent-toggle");
-        if (!key) return;
-        sectionState[key] = !(sectionState[key] !== false);
+        const key = btn.getAttribute("data-wpagent-panel");
+        if (!key || !panels.includes(key)) return;
+        activePanel = key;
         try {
-          localStorage.setItem(storageKey, JSON.stringify(sectionState));
+          localStorage.setItem(panelStorageKey, activePanel);
         } catch (e) {}
-        applySectionState();
+        applyActivePanel();
       });
     });
 
-    applySectionState();
+    applyActivePanel();
 
     const originalTitle = document.title;
     let runningCount = 0;

@@ -71,6 +71,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.2.11 - 2025-12-19
 - Admin: removed the “Options” (gear) toggle since that section is always visible.
 
+## 0.2.12 - 2025-12-19
+- Admin: header icons now switch a single config panel under the always-visible 3 option toggles (prompt/provider/access).
+
+## 0.3.0 - 2025-12-19
+- AI: default prompt removed the “À vérifier / À compléter” section and reinforced “title must not be the URL”.
+
+## 0.3.1 - 2025-12-19
+- Admin: added “Supprimer” (trash) action for topics in the main list.
+
 ## 0.1.1 - 2025-12-18
 - Admin: new minimal full-white UI; CSS/JS extracted into `assets/admin.css` and `assets/admin.js`.
 - PWA + capture page: switched to a minimal white theme.

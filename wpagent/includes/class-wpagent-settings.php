@@ -134,16 +134,13 @@ si une information n’est pas dans l’extrait → rester général (ou au cond
 
 Si les sources sont insuffisantes :
 - produire quand même un article utile basé sur des principes généraux,
-- ajouter une section finale “À vérifier / À compléter” listant précisément :
-  - fonctionnalités manquantes,
-  - limites connues,
-  - points nécessitant confirmation.
-Ne jamais poser de questions au lecteur.
+- rester explicite sur ce qui est certain vs. ce qui est hypothétique, sans inventer.
 
 🧱 FORMAT DE L’ARTICLE (OBLIGATOIRE – ORDRE FIXE)
 
 📌 TITRE
 Commence obligatoirement par le nom exact de l’application / service / outil. Puis un titre clair, spécifique, informatif.
+Le titre ne doit JAMAIS être une URL, ni une copie brute du contenu soumis : il doit être généré.
 
 URL
 Une seule URL, propre, sans commentaire.

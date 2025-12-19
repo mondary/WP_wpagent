@@ -111,6 +111,11 @@ body.wpagent-admin-page #wpbody-content {
 	border-color: #d1d5db;
 }
 
+.wpagent-icon-btn[aria-selected="true"] {
+	background: #fff;
+	border-color: var(--wpagent-border);
+}
+
 .wpagent-icon-btn[aria-pressed="false"] {
 	opacity: 0.55;
 }
@@ -228,6 +233,14 @@ body.wpagent-admin-page #wpbody-content {
 .wpagent-admin-page .wpagent-admin a:hover {
 	color: #000;
 	text-decoration-color: #000;
+}
+
+.wpagent-topic-actions a {
+	text-decoration: none;
+}
+
+.wpagent-topic-actions a:hover {
+	text-decoration: underline;
 }
 
 .wpagent-admin-page .wpagent-admin .notice {

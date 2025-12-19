@@ -16,6 +16,7 @@ final class WPAgent_Admin {
 		add_action('admin_post_wpagent_generate_draft', [self::class, 'handle_generate_draft']);
 		add_action('admin_post_wpagent_generate_draft_topic', [self::class, 'handle_generate_draft_topic']);
 		add_action('admin_post_wpagent_add_topic', [self::class, 'handle_add_topic']);
+		add_action('admin_post_wpagent_delete_topic', [self::class, 'handle_delete_topic']);
 
 		add_filter('post_row_actions', [self::class, 'topic_row_actions'], 10, 2);
 		add_filter('manage_edit-' . WPAgent_Post_Type::POST_TYPE . '_columns', [self::class, 'topic_columns']);
@@ -326,6 +327,39 @@ final class WPAgent_Admin {
 		exit;
 	}
 
+	public static function handle_delete_topic(): void {
+		if (!current_user_can('delete_posts')) {
+			wp_die('Forbidden', 403);
+		}
+
+		$topic_id = isset($_REQUEST['topic_id']) ? (int) $_REQUEST['topic_id'] : 0;
+		if ($topic_id <= 0) {
+			wp_safe_redirect(WPAgent_Settings::admin_page_url(['error' => 'missing_topic']));
+			exit;
+		}
+
+		check_admin_referer('wpagent_delete_topic_' . $topic_id);
+
+		$topic = get_post($topic_id);
+		if (!$topic || $topic->post_type !== WPAgent_Post_Type::POST_TYPE) {
+			wp_safe_redirect(WPAgent_Settings::admin_page_url(['error' => 'Sujet introuvable.']));
+			exit;
+		}
+
+		if (!current_user_can('delete_post', $topic_id)) {
+			wp_die('Forbidden', 403);
+		}
+
+		$res = wp_trash_post($topic_id);
+		if (!$res) {
+			wp_safe_redirect(WPAgent_Settings::admin_page_url(['error' => 'Impossible de supprimer le sujet.']));
+			exit;
+		}
+
+		wp_safe_redirect(WPAgent_Settings::admin_page_url(['deleted' => 1]));
+		exit;
+	}
+
 	public static function topic_row_actions(array $actions, \WP_Post $post): array {
 		if ($post->post_type !== WPAgent_Post_Type::POST_TYPE) {
 			return $actions;
@@ -577,11 +611,11 @@ final class WPAgent_Admin {
 		echo '<div class="wpagent-topbar-subtitle">Inbox → IA → drafts WordPress</div>';
 		echo '</div>';
 		echo '</div>';
-		echo '<div class="wpagent-topbar-actions" role="group" aria-label="Afficher/Masquer les sections">';
+		echo '<div class="wpagent-topbar-actions" role="tablist" aria-label="Panneaux de configuration">';
 		echo '<button type="submit" form="wpagent-settings-form" class="button button-primary" title="Enregistrer la configuration">Enregistrer</button>';
-		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-toggle="prompt" aria-pressed="true" title="Afficher/Masquer: Pré-prompt"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">Pré-prompt</span></button>';
-		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-toggle="provider" aria-pressed="true" title="Afficher/Masquer: Provider & modèle"><span class="dashicons dashicons-cloud" aria-hidden="true"></span><span class="screen-reader-text">Provider</span></button>';
-		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-toggle="access" aria-pressed="true" title="Afficher/Masquer: Accès & endpoints"><span class="dashicons dashicons-shield" aria-hidden="true"></span><span class="screen-reader-text">Accès</span></button>';
+		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="true" aria-pressed="true" aria-controls="wpagent-panel-prompt" data-wpagent-panel="prompt" title="Pré-prompt"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">Pré-prompt</span></button>';
+		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-provider" data-wpagent-panel="provider" title="Provider & modèle"><span class="dashicons dashicons-cloud" aria-hidden="true"></span><span class="screen-reader-text">Provider</span></button>';
+		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-access" data-wpagent-panel="access" title="Accès & endpoints"><span class="dashicons dashicons-shield" aria-hidden="true"></span><span class="screen-reader-text">Accès</span></button>';
 		echo '</div>';
 		echo '</div>';
 
@@ -606,6 +640,9 @@ final class WPAgent_Admin {
 		}
 		if (isset($_GET['added']) && (string) $_GET['added'] === '1') {
 			echo '<div class="notice notice-success"><p>Sujet ajouté à l’inbox.</p></div>';
+		}
+		if (isset($_GET['deleted']) && (string) $_GET['deleted'] === '1') {
+			echo '<div class="notice notice-success"><p>Sujet supprimé.</p></div>';
 		}
 
 		echo '<div class="wpagent-layout">';
@@ -699,10 +736,15 @@ final class WPAgent_Admin {
 					$source_url = self::get_topic_source_url($topic);
 					$title = (string) get_the_title($topic);
 					$edit_topic_url = get_edit_post_link($topic_id, 'url');
+					$delete_url = wp_nonce_url(
+						admin_url('admin-post.php?action=wpagent_delete_topic&topic_id=' . $topic_id),
+						'wpagent_delete_topic_' . $topic_id
+					);
 					$captured_ts = self::get_topic_captured_at_ts($topic);
 					$captured_label = function_exists('wp_date')
 						? wp_date((string) get_option('date_format'), $captured_ts)
 						: date_i18n((string) get_option('date_format'), $captured_ts);
+					$confirm = esc_js("Supprimer ce sujet ? (mis à la corbeille)");
 
 					echo '<tr>';
 					echo '<td>';
@@ -710,9 +752,6 @@ final class WPAgent_Admin {
 					// If the title itself is a URL, make it directly clickable (external) and keep an "Éditer" link.
 					if ($source_url !== '' && self::normalize_url($title) === $source_url) {
 						echo '<a href="' . esc_url($source_url) . '" target="_blank" rel="noreferrer noopener">' . esc_html($title) . '</a>';
-						if ($edit_topic_url) {
-							echo ' <span class="wpagent-muted">· <a href="' . esc_url($edit_topic_url) . '">Éditer</a></span>';
-						}
 					} else {
 						if ($edit_topic_url) {
 							echo '<a href="' . esc_url($edit_topic_url) . '">' . esc_html($title) . '</a>';
@@ -721,6 +760,13 @@ final class WPAgent_Admin {
 						}
 					}
 					echo '</strong>';
+					echo '<div class="wpagent-muted wpagent-topic-actions" style="margin-top:4px">';
+					if ($edit_topic_url) {
+						echo '<a href="' . esc_url($edit_topic_url) . '">Éditer</a>';
+					}
+					echo ' · ';
+					echo '<a href="' . esc_url($delete_url) . '" onclick="return confirm(\'' . $confirm . '\')">Supprimer</a>';
+					echo '</div>';
 					echo '<br/><span class="wpagent-muted">' . esc_html($captured_label) . '</span>';
 					if ($source_url !== '' && self::normalize_url($title) !== $source_url) {
 						echo '<div class="wpagent-muted"><a href="' . esc_url($source_url) . '" target="_blank" rel="noreferrer noopener">' . esc_html($source_url) . '</a></div>';
@@ -763,18 +809,7 @@ final class WPAgent_Admin {
 		wp_nonce_field('wpagent_save_settings', 'wpagent_save_settings_nonce');
 		echo '<input type="hidden" name="action" value="wpagent_save_settings"/>';
 
-		echo '<div id="wpagent-section-prompt" data-wpagent-section="prompt">';
-		echo '<div class="wpagent-field">';
-		echo '<label for="system_prompt">🧠 Pré-prompt</label>';
-		echo '<div class="wpagent-muted">Astuce: si tu veux revenir au pré-prompt par défaut, clique “Réinitialiser”.</div>';
-		echo '<textarea name="system_prompt" id="system_prompt" class="large-text" rows="8">' . esc_textarea($system_prompt) . '</textarea>';
-		echo '<div class="wpagent-actions" style="margin-top:10px">';
-		submit_button('Réinitialiser', 'secondary', 'wpagent_reset_preprompt', false);
-		echo '</div>';
-		echo '</div>';
-		echo '</div>';
-
-		echo '<div id="wpagent-section-options" data-wpagent-section="options">';
+		echo '<div id="wpagent-config-options">';
 		echo '<div class="wpagent-toggle">';
 		echo '<div><strong>📝 Ouvrir le draft après génération</strong><div class="wpagent-muted">Sinon, tu restes sur la page WPagent.</div></div>';
 		echo '<label class="wpagent-switch" aria-label="Ouvrir le draft après génération">';
@@ -800,7 +835,18 @@ final class WPAgent_Admin {
 		echo '</div>';
 		echo '</div>';
 
-		echo '<div id="wpagent-section-provider" data-wpagent-section="provider">';
+		echo '<div id="wpagent-panel-prompt" data-wpagent-panel-content="prompt" class="wpagent-panel">';
+		echo '<div class="wpagent-field" style="margin-top:14px">';
+		echo '<label for="system_prompt">🧠 Pré-prompt</label>';
+		echo '<div class="wpagent-muted">Astuce: si tu veux revenir au pré-prompt par défaut, clique “Réinitialiser”.</div>';
+		echo '<textarea name="system_prompt" id="system_prompt" class="large-text" rows="8">' . esc_textarea($system_prompt) . '</textarea>';
+		echo '<div class="wpagent-actions" style="margin-top:10px">';
+		submit_button('Réinitialiser', 'secondary', 'wpagent_reset_preprompt', false);
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div id="wpagent-panel-provider" data-wpagent-panel-content="provider" class="wpagent-panel wpagent-hidden">';
 		echo '<div class="wpagent-field">';
 		echo '<label for="provider">Provider</label>';
 		echo '<select name="provider" id="provider">';
@@ -850,10 +896,10 @@ final class WPAgent_Admin {
 		echo '</div>';
 
 		echo '</form>';
-		echo '</section>';
 
-		echo '<section id="wpagent-section-access" data-wpagent-section="access" class="wpagent-card">';
-		echo '<h2>Accès</h2>';
+		echo '<div id="wpagent-panel-access" data-wpagent-panel-content="access" class="wpagent-panel wpagent-hidden">';
+		echo '<hr style="border:0;border-top:1px solid #e5e7eb;margin:14px 0" />';
+		echo '<h2 style="margin:0 0 12px;font-size:14px">Accès</h2>';
 		echo '<div class="wpagent-field">';
 		echo '<label>Token</label>';
 		echo '<div class="wpagent-kv">';
@@ -884,6 +930,8 @@ final class WPAgent_Admin {
 			'</pre>';
 		echo '<div class="wpagent-muted" style="margin-top:6px">POST: token + text (+ url/source_title).</div>';
 		echo '</div>';
+
+		echo '</div>'; // panel access
 		echo '</section>';
 
 		echo '</aside>';
