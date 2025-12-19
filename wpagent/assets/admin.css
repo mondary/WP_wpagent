@@ -11,6 +11,15 @@ body.wpagent-admin-page #wpbody-content {
 	padding-bottom: 28px;
 }
 
+.wpagent-admin-page .wrap.wpagent-admin {
+	--wpagent-text: #111827;
+	--wpagent-muted: #6b7280;
+	--wpagent-border: #e5e7eb;
+	--wpagent-soft: #f3f4f6;
+	--wpagent-accent: #111827;
+	color: var(--wpagent-text);
+}
+
 .wpagent-header {
 	display: flex;
 	align-items: center;
@@ -25,7 +34,7 @@ body.wpagent-admin-page #wpbody-content {
 }
 
 .wpagent-subtitle {
-	color: #50575e;
+	color: var(--wpagent-muted);
 	margin: 0 0 14px;
 }
 
@@ -44,9 +53,9 @@ body.wpagent-admin-page #wpbody-content {
 
 .wpagent-card {
 	background: #fff;
-	border: 1px solid #e5e7eb;
+	border: 1px solid var(--wpagent-border);
 	border-radius: 16px;
-	box-shadow: 0 18px 50px rgba(17, 24, 39, 0.08);
+	box-shadow: none;
 	padding: 16px;
 }
 
@@ -60,8 +69,52 @@ body.wpagent-admin-page #wpbody-content {
 }
 
 .wpagent-muted {
-	color: #6b7280;
+	color: var(--wpagent-muted);
 	font-size: 12px;
+}
+
+.wpagent-admin-page .wpagent-admin a {
+	color: var(--wpagent-accent);
+}
+
+.wpagent-admin-page .wpagent-admin a:hover {
+	color: #000;
+}
+
+.wpagent-admin-page .wpagent-admin .notice {
+	border-radius: 12px;
+}
+
+.wpagent-admin-page .wpagent-admin .button,
+.wpagent-admin-page .wpagent-admin .button-secondary,
+.wpagent-admin-page .wpagent-admin .button-primary {
+	border-radius: 12px;
+}
+
+.wpagent-admin-page .wpagent-admin .button-primary {
+	background: var(--wpagent-accent);
+	border-color: var(--wpagent-accent);
+}
+
+.wpagent-admin-page .wpagent-admin .button-primary:hover,
+.wpagent-admin-page .wpagent-admin .button-primary:focus {
+	background: #000;
+	border-color: #000;
+}
+
+.wpagent-admin-page .wpagent-admin .button-secondary,
+.wpagent-admin-page .wpagent-admin .button {
+	background: var(--wpagent-soft);
+	border-color: var(--wpagent-border);
+	color: var(--wpagent-text);
+}
+
+.wpagent-admin-page .wpagent-admin .button-secondary:hover,
+.wpagent-admin-page .wpagent-admin .button:hover,
+.wpagent-admin-page .wpagent-admin .button:focus {
+	background: #e5e7eb;
+	border-color: #d1d5db;
+	color: var(--wpagent-text);
 }
 
 .wpagent-actions {
@@ -104,6 +157,8 @@ body.wpagent-admin-page #wpbody-content {
 	width: 100%;
 	max-width: none;
 	box-sizing: border-box;
+	border-radius: 12px;
+	border-color: var(--wpagent-border);
 }
 
 .wpagent-toggle {
@@ -154,7 +209,7 @@ body.wpagent-admin-page #wpbody-content {
 }
 
 .wpagent-switch input:checked + .wpagent-slider {
-	background: #111827;
+	background: var(--wpagent-accent);
 }
 
 .wpagent-switch input:checked + .wpagent-slider:before {
@@ -205,3 +260,36 @@ body.wpagent-admin-page #wpbody-content {
 	vertical-align: top;
 }
 
+.wpagent-admin-page .wpagent-admin .widefat,
+.wpagent-admin-page .wpagent-admin .widefat th,
+.wpagent-admin-page .wpagent-admin .widefat td {
+	border-color: var(--wpagent-border);
+}
+
+.wpagent-admin-page .wpagent-admin .widefat thead th {
+	background: #fff;
+}
+
+.wpagent-admin-page .wpagent-admin .nav-tab-wrapper {
+	border-bottom: 1px solid var(--wpagent-border);
+	margin: 0 0 12px;
+	padding: 0;
+}
+
+.wpagent-admin-page .wpagent-admin .nav-tab {
+	background: transparent;
+	border: 1px solid transparent;
+	border-bottom: none;
+	color: var(--wpagent-muted);
+	border-radius: 12px 12px 0 0;
+}
+
+.wpagent-admin-page .wpagent-admin .nav-tab:hover {
+	color: var(--wpagent-text);
+}
+
+.wpagent-admin-page .wpagent-admin .nav-tab-active {
+	color: var(--wpagent-text);
+	border-color: var(--wpagent-border);
+	background: #fff;
+}

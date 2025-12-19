@@ -16,6 +16,8 @@
     const status = qs("wpagentFetchModelsStatus");
     const provider = qs("provider");
     const select = qs("wpagentModelsSelect");
+    const openrouterKeyInput = qs("openrouter_api_key");
+    const geminiKeyInput = qs("gemini_api_key");
     const openrouterInput = qs("openrouter_model");
     const geminiInput = qs("gemini_model");
     const openrouterBlock = qs("wpagent-provider-openrouter");
@@ -95,6 +97,15 @@
           form.set("action", "wpagent_fetch_models");
           form.set("_ajax_nonce", cfg.nonce || "");
           form.set("provider", provider.value || "openrouter");
+          if (provider.value === "gemini") {
+            if (geminiKeyInput && geminiKeyInput.value.trim()) {
+              form.set("api_key", geminiKeyInput.value.trim());
+            }
+          } else {
+            if (openrouterKeyInput && openrouterKeyInput.value.trim()) {
+              form.set("api_key", openrouterKeyInput.value.trim());
+            }
+          }
 
           const res = await fetch(cfg.ajaxUrl || "", {
             method: "POST",
@@ -136,4 +147,3 @@
     init();
   }
 })();
-

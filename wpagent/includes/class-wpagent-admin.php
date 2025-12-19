@@ -80,15 +80,24 @@ final class WPAgent_Admin {
 
 			$plugin_basename = plugin_basename(WPAGENT_PLUGIN_FILE);
 
-			wp_register_style('wpagent-admin-inline', false);
-			wp_enqueue_style('wpagent-admin-inline');
+			$ver = defined('WPAGENT_VERSION') ? WPAGENT_VERSION : '1';
+			wp_enqueue_style(
+				'wpagent-plugins',
+				plugins_url('assets/plugins.css', WPAGENT_PLUGIN_FILE),
+				[],
+				$ver
+			);
 
-			$css = 'tr[data-plugin="' . esc_attr($plugin_basename) . '"] .plugin-title strong:before{'
+			// Be robust to markup changes / other plugins tweaking the plugins table.
+			$sel = 'tr[data-plugin="' . esc_attr($plugin_basename) . '"] .plugin-title .row-title:before,'
+				. 'tr[data-plugin="' . esc_attr($plugin_basename) . '"] .plugin-title strong:before';
+
+			$css = $sel . '{'
 				. 'content:"";display:inline-block;width:20px;height:20px;'
 				. 'background:url("' . esc_url($icon_url) . '") no-repeat center/contain;'
 				. 'margin-right:6px;vertical-align:text-bottom;}';
 
-			wp_add_inline_style('wpagent-admin-inline', $css);
+			wp_add_inline_style('wpagent-plugins', $css);
 			return;
 		}
 
@@ -794,6 +803,18 @@ final class WPAgent_Admin {
 			$provider = WPAgent_Settings::get_provider();
 		}
 
+		// UX: si l'utilisateur vient de coller une clé puis clique "Récupérer les modèles",
+		// on la persiste directement (évite l'étape "Enregistrer" avant de tester).
+		$api_key = isset($_POST['api_key']) ? sanitize_text_field((string) wp_unslash($_POST['api_key'])) : '';
+		$api_key = trim($api_key);
+		if ($api_key !== '') {
+			if ($provider === 'gemini') {
+				update_option(WPAgent_Settings::OPTION_GEMINI_API_KEY, $api_key, false);
+			} else {
+				update_option(WPAgent_Settings::OPTION_OPENROUTER_API_KEY, $api_key, false);
+			}
+		}
+
 		$result = self::fetch_models($provider);
 		if (is_wp_error($result)) {
 			wp_send_json(['ok' => false, 'message' => $result->get_error_message()], 400);
@@ -850,6 +871,12 @@ final class WPAgent_Admin {
 			}
 
 			$models = array_values(array_unique(array_filter(array_map('trim', $models))));
+			$models = array_values(
+				array_filter(
+					$models,
+					static fn($m) => stripos((string) $m, 'free') !== false
+				)
+			);
 			sort($models);
 			set_transient($transient_key, $models, 12 * HOUR_IN_SECONDS);
 			return $models;
@@ -895,6 +922,12 @@ final class WPAgent_Admin {
 		}
 
 		$models = array_values(array_unique(array_filter(array_map('trim', $models))));
+		$models = array_values(
+			array_filter(
+				$models,
+				static fn($m) => stripos((string) $m, 'free') !== false
+			)
+		);
 		sort($models);
 		set_transient($transient_key, $models, 12 * HOUR_IN_SECONDS);
 		return $models;
