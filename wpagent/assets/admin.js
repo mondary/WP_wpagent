@@ -262,6 +262,85 @@
       });
     });
 
+    // Non-blocking image fetch per topic row.
+    document.querySelectorAll("button.wpagent-image-btn").forEach((btnEl) => {
+      btnEl.addEventListener("click", async () => {
+        if (btnEl.dataset.running === "1") return;
+        const topicId = btnEl.getAttribute("data-topic-id") || "";
+        const nonce = btnEl.getAttribute("data-nonce") || "";
+        if (!topicId || !nonce) return;
+
+        const tr = btnEl.closest("tr");
+        const spinnerEl = btnEl.nextElementSibling && btnEl.nextElementSibling.classList && btnEl.nextElementSibling.classList.contains("wpagent-inline-spinner")
+          ? btnEl.nextElementSibling
+          : null;
+        const titleCell = tr ? tr.querySelector("td") : null;
+
+        try {
+          btnEl.dataset.running = "1";
+          btnEl.disabled = true;
+          btnEl.title = "Récupération…";
+          setRunning(+1);
+          if (spinnerEl) spinnerEl.classList.add("is-active");
+
+          const payload = new URLSearchParams();
+          payload.set("action", "wpagent_fetch_image");
+          payload.set("topic_id", topicId);
+          payload.set("nonce", nonce);
+
+          const res = await fetch(cfg.ajaxUrl || "", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: payload.toString(),
+          });
+
+          const txt = await res.text();
+          let data;
+          try {
+            data = JSON.parse(txt);
+          } catch (err) {
+            throw new Error("Réponse invalide");
+          }
+          if (!res.ok || !data || !data.ok) {
+            throw new Error((data && data.message) || "Erreur");
+          }
+
+          // Render thumbnail under the title cell.
+          if (titleCell && data.thumb_url) {
+            let wrap = titleCell.querySelector(".wpagent-topic-thumb");
+            if (!wrap) {
+              wrap = document.createElement("div");
+              wrap.className = "wpagent-topic-thumb";
+              titleCell.appendChild(wrap);
+            } else {
+              wrap.innerHTML = "";
+            }
+
+            const link = document.createElement("a");
+            link.href = data.full_url || data.thumb_url;
+            link.target = "_blank";
+            link.rel = "noreferrer noopener";
+
+            const img = document.createElement("img");
+            img.src = data.thumb_url;
+            img.alt = "";
+            link.appendChild(img);
+
+            wrap.appendChild(link);
+          }
+
+          btnEl.title = "Image récupérée";
+        } catch (err) {
+          btnEl.title = err && err.message ? err.message : "Erreur";
+        } finally {
+          setRunning(-1);
+          btnEl.dataset.running = "0";
+          btnEl.disabled = false;
+          if (spinnerEl) spinnerEl.classList.remove("is-active");
+        }
+      });
+    });
+
     syncProviderUI();
     setCurrentModelLabel();
   }

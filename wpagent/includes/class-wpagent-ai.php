@@ -67,6 +67,12 @@ final class WPAgent_AI {
 		}
 
 		$draft_id = (int) $draft_id;
+		// Optional: if an image was fetched for this topic, reuse it as featured image.
+		$img_id = (int) get_post_meta($topic_id, '_wpagent_source_image_id', true);
+		if ($img_id > 0 && get_post_type($img_id) === 'attachment') {
+			set_post_thumbnail($draft_id, $img_id);
+		}
+
 		// Permet plusieurs drafts par sujet.
 		$draft_ids = get_post_meta($topic_id, '_wpagent_draft_post_ids', true);
 		if (!is_array($draft_ids)) {

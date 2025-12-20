@@ -25,6 +25,7 @@ final class WPAgent_Admin {
 
 		add_action('wp_ajax_wpagent_fetch_models', [self::class, 'ajax_fetch_models']);
 		add_action('wp_ajax_wpagent_generate_draft', [self::class, 'ajax_generate_draft']);
+		add_action('wp_ajax_wpagent_fetch_image', [self::class, 'ajax_fetch_image']);
 
 		// Ajoute un lien WPagent dans "Tous les articles".
 		add_filter('views_edit-post', [self::class, 'posts_list_add_wpagent_link']);
@@ -459,6 +460,145 @@ final class WPAgent_Admin {
 		return '';
 	}
 
+	private static function make_absolute_url(string $maybe_url, string $base_url): string {
+		$maybe_url = trim($maybe_url);
+		if ($maybe_url === '') {
+			return '';
+		}
+
+		// data: URLs not supported for sideload.
+		if (stripos($maybe_url, 'data:') === 0) {
+			return '';
+		}
+
+		// Already absolute.
+		if (preg_match('#^https?://#i', $maybe_url)) {
+			return self::normalize_url($maybe_url);
+		}
+
+		$base = wp_parse_url($base_url);
+		if (!is_array($base) || empty($base['host'])) {
+			return '';
+		}
+
+		$scheme = isset($base['scheme']) ? (string) $base['scheme'] : 'https';
+		$host = (string) $base['host'];
+		$port = isset($base['port']) ? (int) $base['port'] : 0;
+		$origin = $scheme . '://' . $host . ($port ? ':' . $port : '');
+
+		// Scheme-relative.
+		if (strpos($maybe_url, '//') === 0) {
+			return self::normalize_url($scheme . ':' . $maybe_url);
+		}
+
+		// Root-relative.
+		if (strpos($maybe_url, '/') === 0) {
+			return self::normalize_url($origin . $maybe_url);
+		}
+
+		// Relative to current directory.
+		$path = isset($base['path']) ? (string) $base['path'] : '/';
+		$dir = preg_replace('#/[^/]*$#', '/', $path);
+		return self::normalize_url($origin . $dir . $maybe_url);
+	}
+
+	/**
+	 * Discover a "representative" image for a product/service page.
+	 * Prefers OpenGraph/Twitter images; falls back to a few <img> candidates.
+	 *
+	 * @return string|\WP_Error
+	 */
+	private static function discover_image_url(string $source_url): string|\WP_Error {
+		$source_url = self::normalize_url($source_url);
+		if ($source_url === '') {
+			return new \WP_Error('wpagent_image_no_url', 'URL source manquante.');
+		}
+
+		$resp = wp_remote_get(
+			$source_url,
+			[
+				'timeout' => 20,
+				'redirection' => 5,
+				'headers' => [
+					'User-Agent' => 'WPagent/0.3 (+WordPress)',
+					'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+				],
+			]
+		);
+
+		if (is_wp_error($resp)) {
+			return $resp;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code($resp);
+		$body = (string) wp_remote_retrieve_body($resp);
+		if ($code < 200 || $code >= 300 || $body === '') {
+			return new \WP_Error('wpagent_image_http', 'Impossible de récupérer la page source (HTTP ' . $code . ').');
+		}
+
+		// Cap parsing size.
+		$body = substr($body, 0, 200000);
+
+		libxml_use_internal_errors(true);
+		$doc = new \DOMDocument();
+		$ok = @$doc->loadHTML($body);
+		libxml_clear_errors();
+		if (!$ok) {
+			return new \WP_Error('wpagent_image_parse', 'Impossible d’analyser le HTML de la page.');
+		}
+
+		$xpath = new \DOMXPath($doc);
+
+		// Preferred meta candidates.
+		$meta_queries = [
+			"//meta[@property='og:image']/@content",
+			"//meta[@property='og:image:secure_url']/@content",
+			"//meta[@property='og:image:url']/@content",
+			"//meta[@name='twitter:image']/@content",
+			"//meta[@name='twitter:image:src']/@content",
+			"//link[@rel='image_src']/@href",
+		];
+
+		foreach ($meta_queries as $q) {
+			$nodes = $xpath->query($q);
+			if (!$nodes || $nodes->length === 0) {
+				continue;
+			}
+			$candidate = trim((string) $nodes->item(0)->nodeValue);
+			$abs = self::make_absolute_url($candidate, $source_url);
+			if ($abs !== '') {
+				return $abs;
+			}
+		}
+
+		// Fallback: first reasonable <img>.
+		$imgs = $xpath->query("//img[@src]/@src");
+		if ($imgs && $imgs->length) {
+			$seen = 0;
+			foreach ($imgs as $node) {
+				$seen++;
+				if ($seen > 40) {
+					break;
+				}
+				$candidate = trim((string) $node->nodeValue);
+				if ($candidate === '' || stripos($candidate, 'data:') === 0) {
+					continue;
+				}
+				$abs = self::make_absolute_url($candidate, $source_url);
+				if ($abs === '') {
+					continue;
+				}
+				// Skip typical favicons / tiny assets.
+				if (preg_match('#favicon|sprite|logo#i', $abs)) {
+					continue;
+				}
+				return $abs;
+			}
+		}
+
+		return new \WP_Error('wpagent_image_not_found', 'Aucune image trouvée sur la page (OpenGraph/Twitter/img).');
+	}
+
 	private static function get_topic_source_url(\WP_Post $topic): string {
 		$meta = (string) get_post_meta($topic->ID, '_wpagent_source_url', true);
 		$meta = self::normalize_url($meta);
@@ -482,6 +622,80 @@ final class WPAgent_Admin {
 		// Back-compat: fall back to post date if meta is missing.
 		$post_ts = (int) get_post_timestamp($topic);
 		return $post_ts > 0 ? $post_ts : time();
+	}
+
+	public static function ajax_fetch_image(): void {
+		if (!current_user_can('edit_posts')) {
+			wp_send_json(['ok' => false, 'message' => 'Forbidden'], 403);
+		}
+
+		$topic_id = isset($_POST['topic_id']) ? (int) $_POST['topic_id'] : 0;
+		if ($topic_id <= 0) {
+			wp_send_json(['ok' => false, 'message' => 'Topic manquant.'], 400);
+		}
+
+		$nonce = isset($_POST['nonce']) ? (string) wp_unslash($_POST['nonce']) : '';
+		if ($nonce === '' || !wp_verify_nonce($nonce, 'wpagent_fetch_image_' . $topic_id)) {
+			wp_send_json(['ok' => false, 'message' => 'Nonce invalide.'], 403);
+		}
+
+		$topic = get_post($topic_id);
+		if (!$topic || $topic->post_type !== WPAgent_Post_Type::POST_TYPE) {
+			wp_send_json(['ok' => false, 'message' => 'Sujet introuvable.'], 404);
+		}
+
+		$existing_id = (int) get_post_meta($topic_id, '_wpagent_source_image_id', true);
+		if ($existing_id > 0 && get_post_type($existing_id) === 'attachment') {
+			$thumb = wp_get_attachment_image_url($existing_id, 'thumbnail');
+			$full = wp_get_attachment_url($existing_id);
+			wp_send_json(
+				[
+					'ok' => true,
+					'attachment_id' => $existing_id,
+					'thumb_url' => $thumb ? (string) $thumb : '',
+					'full_url' => $full ? (string) $full : '',
+					'image_url' => (string) get_post_meta($topic_id, '_wpagent_source_image_url', true),
+				],
+				200
+			);
+		}
+
+		$source_url = self::get_topic_source_url($topic);
+		if ($source_url === '') {
+			wp_send_json(['ok' => false, 'message' => 'Aucune URL source détectée pour ce sujet.'], 400);
+		}
+
+		$image_url = self::discover_image_url($source_url);
+		if (is_wp_error($image_url)) {
+			wp_send_json(['ok' => false, 'message' => $image_url->get_error_message()], 400);
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		$att_id = media_sideload_image($image_url, 0, null, 'id');
+		if (is_wp_error($att_id)) {
+			wp_send_json(['ok' => false, 'message' => $att_id->get_error_message()], 400);
+		}
+
+		$att_id = (int) $att_id;
+		update_post_meta($topic_id, '_wpagent_source_image_url', $image_url);
+		update_post_meta($topic_id, '_wpagent_source_image_id', $att_id);
+
+		$thumb = wp_get_attachment_image_url($att_id, 'thumbnail');
+		$full = wp_get_attachment_url($att_id);
+
+		wp_send_json(
+			[
+				'ok' => true,
+				'attachment_id' => $att_id,
+				'thumb_url' => $thumb ? (string) $thumb : '',
+				'full_url' => $full ? (string) $full : '',
+				'image_url' => $image_url,
+			],
+			200
+		);
 	}
 
 	public static function topic_columns(array $columns): array {
@@ -736,6 +950,7 @@ final class WPAgent_Admin {
 					$source_url = self::get_topic_source_url($topic);
 					$title = (string) get_the_title($topic);
 					$edit_topic_url = get_edit_post_link($topic_id, 'url');
+					$image_nonce = wp_create_nonce('wpagent_fetch_image_' . $topic_id);
 					$delete_url = wp_nonce_url(
 						admin_url('admin-post.php?action=wpagent_delete_topic&topic_id=' . $topic_id),
 						'wpagent_delete_topic_' . $topic_id
@@ -760,14 +975,11 @@ final class WPAgent_Admin {
 						}
 					}
 					echo '</strong>';
-					echo '<div class="wpagent-muted wpagent-topic-actions" style="margin-top:4px">';
-					if ($edit_topic_url) {
-						echo '<a href="' . esc_url($edit_topic_url) . '">Éditer</a>';
-					}
-					echo ' · ';
-					echo '<a href="' . esc_url($delete_url) . '" onclick="return confirm(\'' . $confirm . '\')">Supprimer</a>';
-					echo '</div>';
 					echo '<br/><span class="wpagent-muted">' . esc_html($captured_label) . '</span>';
+					if ($edit_topic_url) {
+						echo ' <span class="wpagent-muted">· <a class="wpagent-action-link" href="' . esc_url($edit_topic_url) . '">Éditer</a></span>';
+					}
+					echo ' <span class="wpagent-muted">· <a class="wpagent-action-link" href="' . esc_url($delete_url) . '" onclick="return confirm(\'' . $confirm . '\')">Supprimer</a></span>';
 					if ($source_url !== '' && self::normalize_url($title) !== $source_url) {
 						echo '<div class="wpagent-muted"><a href="' . esc_url($source_url) . '" target="_blank" rel="noreferrer noopener">' . esc_html($source_url) . '</a></div>';
 					}
@@ -785,6 +997,8 @@ final class WPAgent_Admin {
 						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
 					}
 					echo '<td style="text-align:right">';
+					echo '<button type="button" class="wpagent-icon-btn wpagent-image-btn" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr($image_nonce) . '" title="Récupérer une image"><span class="dashicons dashicons-format-image" aria-hidden="true"></span><span class="screen-reader-text">Récupérer une image</span></button>';
+					echo '<span class="spinner wpagent-inline-spinner" aria-hidden="true"></span>';
 					echo '<form class="wpagent-generate-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0;display:inline-block" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr(wp_create_nonce('wpagent_generate_draft_' . $topic_id)) . '">';
 					wp_nonce_field('wpagent_generate_draft_' . $topic_id, 'wpagent_generate_draft_nonce_' . $topic_id);
 					echo '<input type="hidden" name="action" value="wpagent_generate_draft"/>';

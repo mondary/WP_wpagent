@@ -80,6 +80,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.1 - 2025-12-19
 - Admin: added “Supprimer” (trash) action for topics in the main list.
 
+## 0.3.2 - 2025-12-19
+- Admin: added “Fetch image” button for a topic (tries OpenGraph/Twitter image from the source URL, then first page img).
+- AI: if an image was fetched for a topic, it is used as the draft featured image.
+
+## 0.3.3 - 2025-12-19
+- Admin: moved “Éditer / Supprimer” actions onto the same line as the date to reduce row height.
+
 ## 0.1.1 - 2025-12-18
 - Admin: new minimal full-white UI; CSS/JS extracted into `assets/admin.css` and `assets/admin.js`.
 - PWA + capture page: switched to a minimal white theme.

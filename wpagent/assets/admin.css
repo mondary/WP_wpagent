@@ -91,6 +91,28 @@ body.wpagent-admin-page #wpbody-content {
 	margin: 0;
 }
 
+.wpagent-image-btn {
+	width: 36px;
+	height: 36px;
+	margin-right: 8px;
+}
+
+.wpagent-topic-thumb {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 6px;
+}
+
+.wpagent-topic-thumb img {
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	border: 1px solid var(--wpagent-border);
+	object-fit: cover;
+	background: #fff;
+}
+
 .wpagent-icon-btn {
 	width: 36px;
 	height: 36px;
@@ -235,11 +257,11 @@ body.wpagent-admin-page #wpbody-content {
 	text-decoration-color: #000;
 }
 
-.wpagent-topic-actions a {
+.wpagent-action-link {
 	text-decoration: none;
 }
 
-.wpagent-topic-actions a:hover {
+.wpagent-action-link:hover {
 	text-decoration: underline;
 }
 
