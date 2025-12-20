@@ -271,10 +271,8 @@
         if (!topicId || !nonce) return;
 
         const tr = btnEl.closest("tr");
-        const spinnerEl = btnEl.nextElementSibling && btnEl.nextElementSibling.classList && btnEl.nextElementSibling.classList.contains("wpagent-inline-spinner")
-          ? btnEl.nextElementSibling
-          : null;
-        const titleCell = tr ? tr.querySelector("td") : null;
+        const spinnerEl = tr ? tr.querySelector(".wpagent-image-spinner") : null;
+        const slotEl = tr ? tr.querySelector(".wpagent-image-inline") : null;
 
         try {
           btnEl.dataset.running = "1";
@@ -305,17 +303,9 @@
             throw new Error((data && data.message) || "Erreur");
           }
 
-          // Render thumbnail under the title cell.
-          if (titleCell && data.thumb_url) {
-            let wrap = titleCell.querySelector(".wpagent-topic-thumb");
-            if (!wrap) {
-              wrap = document.createElement("div");
-              wrap.className = "wpagent-topic-thumb";
-              titleCell.appendChild(wrap);
-            } else {
-              wrap.innerHTML = "";
-            }
-
+          // Render thumbnail next to the Fetch button.
+          if (slotEl && data.thumb_url) {
+            slotEl.innerHTML = "";
             const link = document.createElement("a");
             link.href = data.full_url || data.thumb_url;
             link.target = "_blank";
@@ -326,7 +316,7 @@
             img.alt = "";
             link.appendChild(img);
 
-            wrap.appendChild(link);
+            slotEl.appendChild(link);
           }
 
           btnEl.title = "Image récupérée";

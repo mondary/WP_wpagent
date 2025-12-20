@@ -826,10 +826,10 @@ final class WPAgent_Admin {
 		echo '</div>';
 		echo '</div>';
 		echo '<div class="wpagent-topbar-actions" role="tablist" aria-label="Panneaux de configuration">';
-		echo '<button type="submit" form="wpagent-settings-form" class="button button-primary" title="Enregistrer la configuration">Enregistrer</button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="true" aria-pressed="true" aria-controls="wpagent-panel-prompt" data-wpagent-panel="prompt" title="Pré-prompt"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">Pré-prompt</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-provider" data-wpagent-panel="provider" title="Provider & modèle"><span class="dashicons dashicons-cloud" aria-hidden="true"></span><span class="screen-reader-text">Provider</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-access" data-wpagent-panel="access" title="Accès & endpoints"><span class="dashicons dashicons-shield" aria-hidden="true"></span><span class="screen-reader-text">Accès</span></button>';
+		echo '<button type="submit" form="wpagent-settings-form" class="button wpagent-save-btn" title="Enregistrer la configuration">Enregistrer</button>';
 		echo '</div>';
 		echo '</div>';
 
@@ -996,9 +996,27 @@ final class WPAgent_Admin {
 						}
 						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
 					}
-					echo '<td style="text-align:right">';
+					echo '<td class="wpagent-actions-cell">';
+					echo '<div class="wpagent-row-actions">';
+
+					$img_id = (int) get_post_meta($topic_id, '_wpagent_source_image_id', true);
+					if ($img_id > 0 && get_post_type($img_id) === 'attachment') {
+						$thumb = wp_get_attachment_image_url($img_id, 'thumbnail');
+						$full = wp_get_attachment_url($img_id);
+						if ($thumb) {
+							echo '<span class="wpagent-image-inline">';
+							echo '<a href="' . esc_url($full ? $full : $thumb) . '" target="_blank" rel="noreferrer noopener">';
+							echo '<img src="' . esc_url($thumb) . '" alt="" />';
+							echo '</a>';
+							echo '</span>';
+						}
+					} else {
+						echo '<span class="wpagent-image-inline" aria-hidden="true"></span>';
+					}
+
 					echo '<button type="button" class="wpagent-icon-btn wpagent-image-btn" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr($image_nonce) . '" title="Récupérer une image"><span class="dashicons dashicons-format-image" aria-hidden="true"></span><span class="screen-reader-text">Récupérer une image</span></button>';
-					echo '<span class="spinner wpagent-inline-spinner" aria-hidden="true"></span>';
+					echo '<span class="spinner wpagent-inline-spinner wpagent-image-spinner" aria-hidden="true"></span>';
+
 					echo '<form class="wpagent-generate-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0;display:inline-block" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr(wp_create_nonce('wpagent_generate_draft_' . $topic_id)) . '">';
 					wp_nonce_field('wpagent_generate_draft_' . $topic_id, 'wpagent_generate_draft_nonce_' . $topic_id);
 					echo '<input type="hidden" name="action" value="wpagent_generate_draft"/>';
@@ -1006,6 +1024,8 @@ final class WPAgent_Admin {
 					echo '<span class="spinner wpagent-inline-spinner" aria-hidden="true"></span>';
 					submit_button('Générer un draft', 'primary', 'wpagent_generate_draft_submit_' . $topic_id, false);
 					echo '</form>';
+
+					echo '</div>';
 					echo '</td>';
 					echo '</tr>';
 				}

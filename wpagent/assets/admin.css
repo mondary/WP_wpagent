@@ -1,5 +1,5 @@
 .wpagent-admin {
-	max-width: 1400px;
+	max-width: none;
 }
 
 body.wpagent-admin-page #wpcontent,
@@ -91,23 +91,42 @@ body.wpagent-admin-page #wpbody-content {
 	margin: 0;
 }
 
+.wpagent-save-btn {
+	background: #111827 !important;
+	border-color: #111827 !important;
+	color: #fff !important;
+	border-radius: 12px !important;
+	padding: 0 14px !important;
+	height: 36px;
+	display: inline-flex !important;
+	align-items: center;
+}
+
+.wpagent-save-btn:hover,
+.wpagent-save-btn:focus {
+	background: #000 !important;
+	border-color: #000 !important;
+	color: #fff !important;
+}
+
 .wpagent-image-btn {
 	width: 36px;
 	height: 36px;
-	margin-right: 8px;
+	margin-right: 0;
 }
 
-.wpagent-topic-thumb {
+.wpagent-image-inline {
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
-	margin-top: 6px;
+	margin-right: 8px;
+	vertical-align: middle;
 }
 
-.wpagent-topic-thumb img {
-	width: 32px;
-	height: 32px;
-	border-radius: 8px;
+.wpagent-image-inline img {
+	width: 26px;
+	height: 26px;
+	border-radius: 7px;
 	border: 1px solid var(--wpagent-border);
 	object-fit: cover;
 	background: #fff;
@@ -219,7 +238,50 @@ body.wpagent-admin-page #wpbody-content {
 
 .wpagent-table td:last-child,
 .wpagent-table th:last-child {
-	white-space: nowrap;
+	white-space: normal;
+}
+
+.wpagent-actions-cell {
+	text-align: right;
+	white-space: normal;
+}
+
+.wpagent-row-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.wpagent-row-actions .wpagent-generate-form {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+@media (max-width: 980px) {
+	.wpagent-table {
+		table-layout: auto;
+	}
+	.wpagent-table th:nth-child(1),
+	.wpagent-table th:nth-child(2),
+	.wpagent-table th:nth-child(3) {
+		width: auto;
+	}
+	.wpagent-actions-cell {
+		text-align: left;
+	}
+	.wpagent-row-actions {
+		justify-content: flex-start;
+	}
+	.wpagent-row-actions .wpagent-generate-form {
+		flex: 1 1 240px;
+	}
+	.wpagent-row-actions .wpagent-generate-form .button-primary {
+		width: 100%;
+		max-width: 100%;
+	}
 }
 
 .wpagent-card {

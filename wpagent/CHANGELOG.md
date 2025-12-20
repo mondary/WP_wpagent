@@ -87,6 +87,21 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.3 - 2025-12-19
 - Admin: moved “Éditer / Supprimer” actions onto the same line as the date to reduce row height.
 
+## 0.3.4 - 2025-12-19
+- Admin: fetched topic image thumbnail now appears next to the “Fetch image” button.
+
+## 0.3.5 - 2025-12-20
+- Admin: removed max-width constraint to use full available screen width.
+
+## 0.3.6 - 2025-12-20
+- Admin: topic image thumbnail now appears to the left of the “Fetch image” button.
+
+## 0.3.7 - 2025-12-20
+- Admin: fixed table responsiveness so action buttons don’t overflow the table on narrow windows (wrap-friendly actions layout).
+
+## 0.3.8 - 2025-12-20
+- Admin: moved “Enregistrer” to the right of the header tabs and forced a black button style.
+
 ## 0.1.1 - 2025-12-18
 - Admin: new minimal full-white UI; CSS/JS extracted into `assets/admin.css` and `assets/admin.js`.
 - PWA + capture page: switched to a minimal white theme.
