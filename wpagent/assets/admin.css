@@ -121,13 +121,19 @@ body.wpagent-admin-page #wpbody-content {
 	gap: 8px;
 	margin-right: 8px;
 	vertical-align: middle;
+	width: 26px;
+	height: 26px;
+	border-radius: 7px;
+	border: 1px solid rgba(229, 231, 235, 0.9);
+	background: #fff;
+	overflow: hidden;
 }
 
 .wpagent-image-inline img {
 	width: 26px;
 	height: 26px;
 	border-radius: 7px;
-	border: 1px solid var(--wpagent-border);
+	border: 0;
 	object-fit: cover;
 	background: #fff;
 }

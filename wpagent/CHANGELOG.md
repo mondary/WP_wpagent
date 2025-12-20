@@ -102,6 +102,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.8 - 2025-12-20
 - Admin: moved “Enregistrer” to the right of the header tabs and forced a black button style.
 
+## 0.3.9 - 2025-12-20
+- Admin: kept “Générer un draft” from being pushed down by the fetched image (image stays left of the image button, below/after the draft button when wrapping).
+
 ## 0.1.1 - 2025-12-18
 - Admin: new minimal full-white UI; CSS/JS extracted into `assets/admin.css` and `assets/admin.js`.
 - PWA + capture page: switched to a minimal white theme.
