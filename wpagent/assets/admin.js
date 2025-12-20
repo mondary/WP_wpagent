@@ -331,6 +331,61 @@
       });
     });
 
+    // Remove fetched image (non-blocking).
+    document.querySelectorAll("button.wpagent-image-remove").forEach((btnEl) => {
+      btnEl.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (btnEl.dataset.running === "1") return;
+        const topicId = btnEl.getAttribute("data-topic-id") || "";
+        const nonce = btnEl.getAttribute("data-nonce") || "";
+        if (!topicId || !nonce) return;
+
+        const tr = btnEl.closest("tr");
+        const spinnerEl = tr ? tr.querySelector(".wpagent-image-spinner") : null;
+        const slotEl = tr ? tr.querySelector(".wpagent-image-inline") : null;
+
+        try {
+          btnEl.dataset.running = "1";
+          setRunning(+1);
+          if (spinnerEl) spinnerEl.classList.add("is-active");
+
+          const payload = new URLSearchParams();
+          payload.set("action", "wpagent_remove_image");
+          payload.set("topic_id", topicId);
+          payload.set("nonce", nonce);
+
+          const res = await fetch(cfg.ajaxUrl || "", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: payload.toString(),
+          });
+
+          const txt = await res.text();
+          let data;
+          try {
+            data = JSON.parse(txt);
+          } catch (err) {
+            throw new Error("Réponse invalide");
+          }
+          if (!res.ok || !data || !data.ok) {
+            throw new Error((data && data.message) || "Erreur");
+          }
+
+          if (slotEl) {
+            slotEl.innerHTML = "";
+          }
+        } catch (err) {
+          // Keep UI stable; error is shown via title.
+          btnEl.title = err && err.message ? err.message : "Erreur";
+        } finally {
+          setRunning(-1);
+          btnEl.dataset.running = "0";
+          if (spinnerEl) spinnerEl.classList.remove("is-active");
+        }
+      });
+    });
+
     syncProviderUI();
     setCurrentModelLabel();
   }

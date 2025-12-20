@@ -26,6 +26,7 @@ final class WPAgent_Admin {
 		add_action('wp_ajax_wpagent_fetch_models', [self::class, 'ajax_fetch_models']);
 		add_action('wp_ajax_wpagent_generate_draft', [self::class, 'ajax_generate_draft']);
 		add_action('wp_ajax_wpagent_fetch_image', [self::class, 'ajax_fetch_image']);
+		add_action('wp_ajax_wpagent_remove_image', [self::class, 'ajax_remove_image']);
 
 		// Ajoute un lien WPagent dans "Tous les articles".
 		add_filter('views_edit-post', [self::class, 'posts_list_add_wpagent_link']);
@@ -698,6 +699,44 @@ final class WPAgent_Admin {
 		);
 	}
 
+	public static function ajax_remove_image(): void {
+		if (!current_user_can('edit_posts')) {
+			wp_send_json(['ok' => false, 'message' => 'Forbidden'], 403);
+		}
+
+		$topic_id = isset($_POST['topic_id']) ? (int) $_POST['topic_id'] : 0;
+		if ($topic_id <= 0) {
+			wp_send_json(['ok' => false, 'message' => 'Topic manquant.'], 400);
+		}
+
+		$nonce = isset($_POST['nonce']) ? (string) wp_unslash($_POST['nonce']) : '';
+		if ($nonce === '' || !wp_verify_nonce($nonce, 'wpagent_remove_image_' . $topic_id)) {
+			wp_send_json(['ok' => false, 'message' => 'Nonce invalide.'], 403);
+		}
+
+		$topic = get_post($topic_id);
+		if (!$topic || $topic->post_type !== WPAgent_Post_Type::POST_TYPE) {
+			wp_send_json(['ok' => false, 'message' => 'Sujet introuvable.'], 404);
+		}
+
+		$att_id = (int) get_post_meta($topic_id, '_wpagent_source_image_id', true);
+		if ($att_id > 0 && get_post_type($att_id) === 'attachment') {
+			if (!current_user_can('delete_post', $att_id)) {
+				wp_send_json(['ok' => false, 'message' => 'Droits insuffisants pour supprimer le média.'], 403);
+			}
+
+			$deleted = wp_delete_attachment($att_id, true);
+			if (!$deleted) {
+				wp_send_json(['ok' => false, 'message' => 'Impossible de supprimer le fichier média.'], 400);
+			}
+		}
+
+		delete_post_meta($topic_id, '_wpagent_source_image_url');
+		delete_post_meta($topic_id, '_wpagent_source_image_id');
+
+		wp_send_json(['ok' => true, 'deleted_attachment_id' => $att_id], 200);
+	}
+
 	public static function topic_columns(array $columns): array {
 		// Injecte des colonnes utiles avant "date".
 		$new = [];
@@ -951,6 +990,7 @@ final class WPAgent_Admin {
 					$title = (string) get_the_title($topic);
 					$edit_topic_url = get_edit_post_link($topic_id, 'url');
 					$image_nonce = wp_create_nonce('wpagent_fetch_image_' . $topic_id);
+					$image_remove_nonce = wp_create_nonce('wpagent_remove_image_' . $topic_id);
 					$delete_url = wp_nonce_url(
 						admin_url('admin-post.php?action=wpagent_delete_topic&topic_id=' . $topic_id),
 						'wpagent_delete_topic_' . $topic_id
@@ -1013,6 +1053,7 @@ final class WPAgent_Admin {
 						$full = wp_get_attachment_url($img_id);
 						if ($thumb) {
 							echo '<span class="wpagent-image-inline">';
+							echo '<button type="button" class="wpagent-image-remove" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr($image_remove_nonce) . '" title="Supprimer l’image">×</button>';
 							echo '<a href="' . esc_url($full ? $full : $thumb) . '" target="_blank" rel="noreferrer noopener">';
 							echo '<img src="' . esc_url($thumb) . '" alt="" />';
 							echo '</a>';

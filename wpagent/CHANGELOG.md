@@ -105,6 +105,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.9 - 2025-12-20
 - Admin: kept “Générer un draft” from being pushed down by the fetched image (image stays left of the image button, below/after the draft button when wrapping).
 
+## 0.3.10 - 2025-12-20
+- Admin: added a small “×” to remove a fetched topic image (clears association without deleting media).
+
+## 0.3.11 - 2025-12-20
+- Admin: removing a fetched topic image now also deletes the media file from the Media Library.
+
 ## 0.1.1 - 2025-12-18
 - Admin: new minimal full-white UI; CSS/JS extracted into `assets/admin.css` and `assets/admin.js`.
 - PWA + capture page: switched to a minimal white theme.

@@ -127,6 +127,29 @@ body.wpagent-admin-page #wpbody-content {
 	border: 1px solid rgba(229, 231, 235, 0.9);
 	background: #fff;
 	overflow: hidden;
+	position: relative;
+}
+
+.wpagent-image-remove {
+	position: absolute;
+	top: -7px;
+	right: -7px;
+	width: 18px;
+	height: 18px;
+	border-radius: 999px;
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	background: rgba(255, 255, 255, 0.95);
+	color: #111827;
+	font-size: 14px;
+	line-height: 16px;
+	padding: 0;
+	cursor: pointer;
+}
+
+.wpagent-image-remove:hover,
+.wpagent-image-remove:focus {
+	background: #fff;
+	border-color: rgba(0, 0, 0, 0.22);
 }
 
 .wpagent-image-inline img {
