@@ -303,14 +303,16 @@ final class WPAgent_REST {
 		$app_url = site_url('/wp-json/wpagent/v1/pwa/app');
 		$share_action = site_url('/wp-json/wpagent/v1/pwa/share');
 		$sw_url = site_url('/wp-json/wpagent/v1/pwa/sw');
+		$scope_url = site_url('/wp-json/wpagent/v1/pwa/');
 		$icon_192 = site_url('/wp-json/wpagent/v1/pwa/icon?size=192');
 		$icon_512 = site_url('/wp-json/wpagent/v1/pwa/icon?size=512');
 
 		$manifest = [
+			'id' => '/wp-json/wpagent/v1/pwa/',
 			'name' => 'WPagent',
 			'short_name' => 'WPagent',
 			'start_url' => $app_url,
-			'scope' => site_url('/'),
+			'scope' => $scope_url,
 			'display' => 'standalone',
 			'background_color' => '#ffffff',
 			'theme_color' => '#ffffff',
@@ -354,7 +356,7 @@ final class WPAgent_REST {
 		$icon_512 = site_url('/wp-json/wpagent/v1/pwa/icon?size=512');
 
 		$js = "(function(){\n" .
-			"const CACHE='wpagent-pwa-v1';\n" .
+			"const CACHE='wpagent-pwa-v2';\n" .
 			"self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['" . esc_js($app_url) . "','" . esc_js($manifest_url) . "','" . esc_js($icon_192) . "','" . esc_js($icon_512) . "'])));self.skipWaiting();});\n" .
 			"self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim());});\n" .
 			"self.addEventListener('fetch',e=>{const url=new URL(e.request.url);if(e.request.method!=='GET')return; if(url.pathname.includes('/wp-json/wpagent/v1/pwa/')){e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(fr=>{const c=fr.clone();caches.open(CACHE).then(cache=>cache.put(e.request,c));return fr;})));}});\n" .
@@ -453,6 +455,7 @@ final class WPAgent_REST {
 			const inboxUrl=' . json_encode($inbox) . ';
 			const topicsUrl=' . json_encode($topics) . ';
 			const swUrl=' . json_encode($sw) . ';
+			const swScope=' . json_encode('/wp-json/wpagent/v1/pwa/') . ';
 			const $=(id)=>document.getElementById(id);
 			function getToken(){return localStorage.getItem("wpagent_token")||"";}
 			function setToken(t){localStorage.setItem("wpagent_token",t);}
@@ -534,7 +537,7 @@ final class WPAgent_REST {
 			});
 			$("refresh").addEventListener("click",async()=>{ try{ await refresh(); setStatus($("sendStatus"),"Liste à jour.",true);}catch(e){ setStatus($("sendStatus"),e.message||"Erreur",false);} });
 			if("serviceWorker" in navigator){
-				navigator.serviceWorker.register(swUrl).catch(()=>{});
+				navigator.serviceWorker.register(swUrl,{scope:swScope}).catch(()=>{});
 			}
 
 			async function consumeShareIfAny(){
