@@ -308,7 +308,7 @@ final class WPAgent_REST {
 		$icon_512 = site_url('/wp-json/wpagent/v1/pwa/icon?size=512');
 
 		$manifest = [
-			'id' => '/wp-json/wpagent/v1/pwa/',
+			'id' => $scope_url,
 			'name' => 'WPagent',
 			'short_name' => 'WPagent',
 			'start_url' => $app_url,
@@ -321,13 +321,13 @@ final class WPAgent_REST {
 					'src' => $icon_192,
 					'sizes' => '192x192',
 					'type' => 'image/png',
-					'purpose' => 'any maskable',
+					'purpose' => 'any',
 				],
 				[
 					'src' => $icon_512,
 					'sizes' => '512x512',
 					'type' => 'image/png',
-					'purpose' => 'any maskable',
+					'purpose' => 'any',
 				],
 			],
 			'share_target' => [
