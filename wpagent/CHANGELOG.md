@@ -112,7 +112,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
 ## 0.3.12 - 2025-12-23
-- PWA: updated manifest icon purpose to keep transparent icons without forced white background.
+- PWA: updated manifest icon purpose to keep transparent icons without forced white background; manifest id now matches scope to avoid collision with another PWA.
 
 ## 0.1.1 - 2025-12-18
 - Admin: new minimal full-white UI; CSS/JS extracted into `assets/admin.css` and `assets/admin.js`.
