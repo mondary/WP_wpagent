@@ -416,15 +416,15 @@ final class WPAgent_Admin {
 
 		$draft_ids = array_values(array_unique(array_filter(array_map('intval', $draft_ids))));
 
-		// Nettoie la liste: supprime les posts supprimés / non-draft/non-future / mauvais type.
+		// Nettoie la liste: supprime les posts supprimés / hors statuts suivis / mauvais type.
 		$kept = [];
 		foreach ($draft_ids as $draft_id) {
 			$p = get_post($draft_id);
 			if (!$p || $p->post_type !== 'post') {
 				continue;
 			}
-			// Ne garde que les drafts et les planifiés.
-			if (!in_array($p->post_status, ['draft', 'future'], true)) {
+			// Ne garde que les statuts utiles pour suivre l'article.
+			if (!in_array($p->post_status, ['draft', 'future', 'publish', 'pending', 'private'], true)) {
 				continue;
 			}
 			$kept[] = (int) $draft_id;
@@ -720,6 +720,31 @@ final class WPAgent_Admin {
 		return $post_ts > 0 ? $post_ts : time();
 	}
 
+	private static function draft_label(int $draft_id): string {
+		$status = (string) get_post_status($draft_id);
+		$date_format = (string) get_option('date_format');
+		$date = get_post_time('U', true, $draft_id);
+		$date_label = $date > 0
+			? (function_exists('wp_date') ? wp_date($date_format, $date) : date_i18n($date_format, $date))
+			: '';
+
+		if ($status === 'future') {
+			$label = $date_label !== '' ? ('Planifié ' . $date_label) : 'Planifié';
+			return '✅ ' . $label;
+		}
+		if ($status === 'publish') {
+			$label = $date_label !== '' ? ('Publié ' . $date_label) : 'Publié';
+			return '✅ ' . $label;
+		}
+		if ($status === 'pending') {
+			return $date_label !== '' ? ('En attente ' . $date_label) : 'En attente';
+		}
+		if ($status === 'private') {
+			return $date_label !== '' ? ('Privé ' . $date_label) : 'Privé';
+		}
+		return 'Draft #' . (int) $draft_id;
+	}
+
 	public static function ajax_fetch_image(): void {
 		if (!current_user_can('edit_posts')) {
 			wp_send_json(['ok' => false, 'message' => 'Forbidden'], 403);
@@ -842,13 +867,7 @@ final class WPAgent_Admin {
 			foreach ($draft_ids as $draft_id) {
 				$link = get_edit_post_link($draft_id, 'url');
 				if ($link) {
-					$status = get_post_status($draft_id);
-					$label = 'Draft #' . (int) $draft_id;
-					if ($status === 'future') {
-						$date = get_post_time('U', true, $draft_id);
-						$label = 'Planifié ' . (function_exists('wp_date') ? wp_date('Y-m-d', $date) : date_i18n('Y-m-d', $date));
-					}
-					$links[] = '<a href="' . esc_url($link) . '">' . esc_html($label) . '</a>';
+					$links[] = '<a href="' . esc_url($link) . '">' . esc_html(self::draft_label($draft_id)) . '</a>';
 				}
 			}
 			echo $links ? implode('<br/>', $links) : '—';
@@ -909,13 +928,7 @@ final class WPAgent_Admin {
 			foreach ($draft_ids as $draft_id) {
 				$link = get_edit_post_link($draft_id, 'url');
 				if ($link) {
-					$status = get_post_status($draft_id);
-					$label = 'Draft #' . (int) $draft_id;
-					if ($status === 'future') {
-						$date = get_post_time('U', true, $draft_id);
-						$label = 'Planifié ' . (function_exists('wp_date') ? wp_date('Y-m-d', $date) : date_i18n('Y-m-d', $date));
-					}
-					echo '<li><a href="' . esc_url($link) . '">' . esc_html($label) . '</a></li>';
+					echo '<li><a href="' . esc_url($link) . '">' . esc_html(self::draft_label($draft_id)) . '</a></li>';
 				}
 			}
 			echo '</ul>';
@@ -1175,13 +1188,7 @@ final class WPAgent_Admin {
 						foreach ($draft_ids as $draft_id) {
 							$link = get_edit_post_link($draft_id, 'url');
 							if ($link) {
-								$status = get_post_status($draft_id);
-								$label = 'Draft #' . (int) $draft_id;
-								if ($status === 'future') {
-									$date = get_post_time('U', true, $draft_id);
-									$label = 'Planifié ' . (function_exists('wp_date') ? wp_date('Y-m-d', $date) : date_i18n('Y-m-d', $date));
-								}
-								$links[] = '<a href="' . esc_url($link) . '">' . esc_html($label) . '</a>';
+								$links[] = '<a href="' . esc_url($link) . '">' . esc_html(self::draft_label($draft_id)) . '</a>';
 							}
 						}
 						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';

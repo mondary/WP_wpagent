@@ -111,6 +111,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.35 - 2025-12-23
+- Admin: add a green check marker for scheduled/published statuses.
+
+## 0.3.34 - 2025-12-23
+- Admin: keep scheduled/published posts linked from topics and label their status.
+
 ## 0.3.33 - 2025-12-23
 - Admin: moved the add-topic button before the pre-prompt tab.
 
