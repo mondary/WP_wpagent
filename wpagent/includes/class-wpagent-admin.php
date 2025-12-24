@@ -416,15 +416,15 @@ final class WPAgent_Admin {
 
 		$draft_ids = array_values(array_unique(array_filter(array_map('intval', $draft_ids))));
 
-		// Nettoie la liste: supprime les posts supprimés / non-draft / mauvais type.
+		// Nettoie la liste: supprime les posts supprimés / non-draft/non-future / mauvais type.
 		$kept = [];
 		foreach ($draft_ids as $draft_id) {
 			$p = get_post($draft_id);
 			if (!$p || $p->post_type !== 'post') {
 				continue;
 			}
-			// Ne garde que les drafts. Si publié/supprimé, il disparaît de la liste.
-			if ($p->post_status !== 'draft') {
+			// Ne garde que les drafts et les planifiés.
+			if (!in_array($p->post_status, ['draft', 'future'], true)) {
 				continue;
 			}
 			$kept[] = (int) $draft_id;
@@ -842,7 +842,13 @@ final class WPAgent_Admin {
 			foreach ($draft_ids as $draft_id) {
 				$link = get_edit_post_link($draft_id, 'url');
 				if ($link) {
-					$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
+					$status = get_post_status($draft_id);
+					$label = 'Draft #' . (int) $draft_id;
+					if ($status === 'future') {
+						$date = get_post_time('U', true, $draft_id);
+						$label = 'Planifié ' . (function_exists('wp_date') ? wp_date('Y-m-d', $date) : date_i18n('Y-m-d', $date));
+					}
+					$links[] = '<a href="' . esc_url($link) . '">' . esc_html($label) . '</a>';
 				}
 			}
 			echo $links ? implode('<br/>', $links) : '—';
@@ -903,7 +909,13 @@ final class WPAgent_Admin {
 			foreach ($draft_ids as $draft_id) {
 				$link = get_edit_post_link($draft_id, 'url');
 				if ($link) {
-					echo '<li><a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a></li>';
+					$status = get_post_status($draft_id);
+					$label = 'Draft #' . (int) $draft_id;
+					if ($status === 'future') {
+						$date = get_post_time('U', true, $draft_id);
+						$label = 'Planifié ' . (function_exists('wp_date') ? wp_date('Y-m-d', $date) : date_i18n('Y-m-d', $date));
+					}
+					echo '<li><a href="' . esc_url($link) . '">' . esc_html($label) . '</a></li>';
 				}
 			}
 			echo '</ul>';
@@ -951,10 +963,10 @@ final class WPAgent_Admin {
 		echo '</div>';
 		echo '</div>';
 		echo '<div class="wpagent-topbar-actions" role="tablist" aria-label="Panneaux de configuration">';
+		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-open-drawer="add" title="Ajouter un sujet"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span><span class="screen-reader-text">Ajouter un sujet</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="true" aria-pressed="true" aria-controls="wpagent-panel-prompt" data-wpagent-panel="prompt" title="Pré-prompt"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">Pré-prompt</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-provider" data-wpagent-panel="provider" title="Provider & modèle"><span class="dashicons dashicons-cloud" aria-hidden="true"></span><span class="screen-reader-text">Provider</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-access" data-wpagent-panel="access" title="Accès & endpoints"><span class="dashicons dashicons-shield" aria-hidden="true"></span><span class="screen-reader-text">Accès</span></button>';
-		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-open-drawer="add" title="Ajouter un sujet"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span><span class="screen-reader-text">Ajouter un sujet</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-open-drawer="config" title="Configuration"><span class="dashicons dashicons-admin-generic" aria-hidden="true"></span><span class="screen-reader-text">Configuration</span></button>';
 		echo '<button type="submit" form="wpagent-settings-form" class="button wpagent-save-btn" title="Enregistrer la configuration">Enregistrer</button>';
 		echo '</div>';
@@ -1163,7 +1175,13 @@ final class WPAgent_Admin {
 						foreach ($draft_ids as $draft_id) {
 							$link = get_edit_post_link($draft_id, 'url');
 							if ($link) {
-								$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
+								$status = get_post_status($draft_id);
+								$label = 'Draft #' . (int) $draft_id;
+								if ($status === 'future') {
+									$date = get_post_time('U', true, $draft_id);
+									$label = 'Planifié ' . (function_exists('wp_date') ? wp_date('Y-m-d', $date) : date_i18n('Y-m-d', $date));
+								}
+								$links[] = '<a href="' . esc_url($link) . '">' . esc_html($label) . '</a>';
 							}
 						}
 						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
