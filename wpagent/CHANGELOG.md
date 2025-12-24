@@ -111,6 +111,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.20 - 2025-12-23
+- PWA: added tooltips for action icons.
+
+## 0.3.19 - 2025-12-23
+- PWA: action buttons now use icons; connection drawer closes after saving token.
+
+## 0.3.18 - 2025-12-23
+- PWA: connection drawer is first and auto-opens when no token is stored.
+
 ## 0.3.17 - 2025-12-23
 - PWA: added bottom-sheet drawers for add/connect/install with backdrop blur.
 

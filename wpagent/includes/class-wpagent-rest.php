@@ -430,6 +430,11 @@ final class WPAgent_REST {
 			.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:10px;padding:10px 12px;background:var(--acc);color:#fff;font-weight:650;font-size:15px}
 			.btn.secondary{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
 			.btn.sm{padding:6px 10px;font-size:13px;border-radius:10px}
+			.btn.icon{padding:8px;width:36px;height:36px;border-radius:999px}
+			.btn .icon{width:18px;height:18px;display:block}
+			.btn[data-tooltip]{position:relative}
+			.btn[data-tooltip]::after{content:attr(data-tooltip);position:absolute;left:50%;transform:translateX(-50%);top:-36px;background:#111827;color:#fff;font-size:12px;padding:4px 8px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s ease}
+			.btn[data-tooltip]:hover::after,.btn[data-tooltip]:focus::after{opacity:1}
 			.btn-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 			.small{font-size:12px;color:var(--muted)}
 			.status{margin-top:10px;font-size:13px}
@@ -468,9 +473,9 @@ final class WPAgent_REST {
 		$html .= '</head><body><div class="wrap">';
 		$html .= '<div class="card compact"><h1>WPagent</h1><p class="small hint">Inbox → draft WordPress.</p>';
 		$html .= '<div class="card-actions">';
-		$html .= '<button class="btn secondary sm" type="button" data-open-drawer="add">Ajouter un sujet</button>';
-		$html .= '<button class="btn secondary sm" type="button" data-open-drawer="connect">Connexion</button>';
-		$html .= '<button class="btn secondary sm" type="button" data-open-drawer="install">Install & API</button>';
+		$html .= '<button class="btn secondary icon" type="button" data-open-drawer="connect" data-tooltip="Connexion" aria-label="Connexion"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4a4 4 0 0 0 4 4zm0 2c-4.42 0-8 2-8 4.5V21h16v-2.5c0-2.5-3.58-4.5-8-4.5z"/></svg></button>';
+		$html .= '<button class="btn secondary icon" type="button" data-open-drawer="add" data-tooltip="Ajouter un sujet" aria-label="Ajouter un sujet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg></button>';
+		$html .= '<button class="btn secondary icon" type="button" data-open-drawer="install" data-tooltip="Install & API" aria-label="Install & API"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7v5.5l-1.5 1.5V19h17v-3l-1.5-1.5V9a7 7 0 0 0-7-7zm-3 7a3 3 0 0 1 6 0v5H9z"/><path fill="currentColor" d="M10 21h4v-2h-4z"/></svg></button>';
 		$html .= '</div></div>';
 		$html .= '<div class="card"><div class="card-head"><h2>Inbox</h2>';
 		$html .= '<button class="btn secondary sm" id="refresh" type="button">Rafraîchir</button></div>';
@@ -573,14 +578,15 @@ final class WPAgent_REST {
 					}
 				}
 				$("token").value=getToken();
-				$("saveToken").addEventListener("click",async()=>{
-					const token=$("token").value.trim();
-					if(!token){ setStatus($("tokenStatus"),"Colle ton token.",false); $("token").focus(); return; }
-					setToken(token);
-					setStatus($("tokenStatus"),"Token enregistré.",true);
-					try{ await refresh(); }catch(e){}
-					try{ await consumeShareIfAny(); }catch(e){}
-				});
+			$("saveToken").addEventListener("click",async()=>{
+				const token=$("token").value.trim();
+				if(!token){ setStatus($("tokenStatus"),"Colle ton token.",false); $("token").focus(); return; }
+				setToken(token);
+				setStatus($("tokenStatus"),"Token enregistré.",true);
+				closeDrawers();
+				try{ await refresh(); }catch(e){}
+				try{ await consumeShareIfAny(); }catch(e){}
+			});
 			$("send").addEventListener("click",async()=>{
 				try{
 					setStatus($("sendStatus"),"Envoi…",true);
@@ -663,6 +669,10 @@ final class WPAgent_REST {
 				btn.addEventListener("click",closeDrawers);
 			});
 			document.addEventListener("keydown",(e)=>{ if(e.key==="Escape"){ closeDrawers(); } });
+
+			if(!getToken()){
+				openDrawer("connect");
+			}
 		</script>';
 		$html .= '</div></body></html>';
 
