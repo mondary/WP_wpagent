@@ -623,6 +623,7 @@ final class WPAgent_REST {
 
 					if(!token){
 						setStatus($("tokenStatus"),"Contenu partagé détecté. Colle ton token puis clique “Enregistrer”.",false);
+						openDrawer("connect");
 						$("token").focus();
 						return;
 					}

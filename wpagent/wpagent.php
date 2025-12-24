@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PKwpagent
  * Description: Capture rapide de "sujets" (inbox) via un endpoint REST, pour les convertir ensuite en brouillons via IA.
- * Version: 0.3.30
+ * Version: 0.3.31
  * Author: wpagent
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('WPAGENT_VERSION', '0.3.30');
+define('WPAGENT_VERSION', '0.3.31');
 define('WPAGENT_PLUGIN_FILE', __FILE__);
 define('WPAGENT_PLUGIN_DIR', __DIR__);
 

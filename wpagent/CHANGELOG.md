@@ -111,6 +111,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.31 - 2025-12-23
+- PWA: open login drawer when share arrives without a token.
+
 ## 0.3.30 - 2025-12-23
 - Branding: renamed WPagent to PKwpagent in UI copy and docs.
 
