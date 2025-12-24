@@ -111,6 +111,18 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.39 - 2025-12-23
+- Admin: switched the "Sans génération" emoji to a red dot.
+
+## 0.3.38 - 2025-12-23
+- Admin: updated the "Sans génération" emoji.
+
+## 0.3.37 - 2025-12-23
+- Admin: added emojis to topic filter tabs.
+
+## 0.3.36 - 2025-12-23
+- Admin: added filters for undrafted, drafted, and scheduled topics.
+
 ## 0.3.35 - 2025-12-23
 - Admin: add a green check marker for scheduled/published statuses.
 

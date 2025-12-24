@@ -745,6 +745,20 @@ final class WPAgent_Admin {
 		return 'Draft #' . (int) $draft_id;
 	}
 
+	/**
+	 * @param int[] $draft_ids
+	 * @param string[] $statuses
+	 */
+	private static function topic_has_status(array $draft_ids, array $statuses): bool {
+		foreach ($draft_ids as $draft_id) {
+			$status = get_post_status((int) $draft_id);
+			if ($status && in_array($status, $statuses, true)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static function ajax_fetch_image(): void {
 		if (!current_user_can('edit_posts')) {
 			wp_send_json(['ok' => false, 'message' => 'Forbidden'], 403);
@@ -1030,14 +1044,15 @@ final class WPAgent_Admin {
 		$add_section_html = ob_get_clean();
 
 		$filter = isset($_GET['filter']) ? sanitize_key((string) wp_unslash($_GET['filter'])) : 'all';
-		if (!in_array($filter, ['all', 'todo', 'generated'], true)) {
+		if (!in_array($filter, ['all', 'undrafted', 'drafted', 'scheduled'], true)) {
 			$filter = 'all';
 			}
 
 			$tabs = [
-				'all' => 'Tout',
-				'todo' => 'Sans génération',
-				'generated' => 'Déjà générés',
+				'all' => '📦 Tout',
+				'undrafted' => '🔴 Sans génération',
+				'drafted' => '✍️ Draftés',
+				'scheduled' => '🗓️ Planifiés',
 			];
 
 		echo '<section class="wpagent-card">';
@@ -1064,19 +1079,7 @@ final class WPAgent_Admin {
 					'suppress_filters' => true,
 				];
 
-			if ($filter === 'generated') {
-				$args['meta_query'] = [
-					'relation' => 'OR',
-					[
-						'key' => '_wpagent_draft_post_ids',
-						'compare' => 'EXISTS',
-					],
-					[
-						'key' => '_wpagent_draft_post_id',
-						'compare' => 'EXISTS',
-					],
-				];
-			} elseif ($filter === 'todo') {
+			if ($filter === 'undrafted') {
 				$args['meta_query'] = [
 					'relation' => 'AND',
 					[
@@ -1091,6 +1094,27 @@ final class WPAgent_Admin {
 			}
 
 			$query = new \WP_Query($args);
+
+		if (in_array($filter, ['drafted', 'scheduled'], true)) {
+			$query->posts = array_values(
+				array_filter(
+					$query->posts,
+					static function ($topic) use ($filter) {
+						if (!$topic instanceof \WP_Post) {
+							return false;
+						}
+						$draft_ids = self::get_topic_draft_ids((int) $topic->ID);
+						if (!$draft_ids) {
+							return false;
+						}
+						$statuses = $filter === 'scheduled'
+							? ['future']
+							: ['draft', 'pending', 'private'];
+						return self::topic_has_status($draft_ids, $statuses);
+					}
+				)
+			);
+		}
 
 		if (!$query->have_posts()) {
 			echo '<p class="wpagent-muted">Aucun sujet pour le moment.</p>';
