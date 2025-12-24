@@ -1,4 +1,4 @@
-# WPagent (wpagent)
+# PKwpagent (wpagent)
 
 Objectif: capturer rapidement des "sujets" depuis mobile (une inbox), puis les convertir ensuite en brouillons via IA.
 
@@ -19,13 +19,13 @@ Voir `CHANGELOG.md`.
 
 ## Où voir la liste
 
-- Menu admin: **WPagent** → **Sujets**
+- Menu admin: **PKwpagent** → **Sujets**
 
 ## Capture depuis mobile
 
 Le plugin expose un endpoint REST protégé par un token (généré à l’activation).
 
-- Admin: **WPagent** → copie le token et les URLs
+- Admin: **PKwpagent** → copie le token et les URLs
 - Ajouter un sujet (GET/POST): `/wp-json/wpagent/v1/inbox`
 - Page mobile simple (HTML): `/wp-json/wpagent/v1/capture?token=...`
 - PWA installable (Android): `/wp-json/wpagent/v1/pwa/app`
@@ -45,12 +45,12 @@ Le plugin expose un endpoint REST protégé par un token (généré à l’activ
 
 1. Ouvre `https://ton-site.tld/wp-json/wpagent/v1/pwa/app` dans Chrome
 2. Menu ⋮ → **Ajouter à l’écran d’accueil**
-3. Ouvre WPagent une fois, colle le token (depuis l’admin), clique **Enregistrer**
-4. Depuis Chrome / une app compatible: **Partager** → **WPagent** → ajout automatique à l’inbox
+3. Ouvre PKwpagent une fois, colle le token (depuis l’admin), clique **Enregistrer**
+4. Depuis Chrome / une app compatible: **Partager** → **PKwpagent** → ajout automatique à l’inbox
 
 ## Inbox → Draft WordPress (IA)
 
-Dans l’admin **WPagent**, configure:
+Dans l’admin **PKwpagent**, configure:
 
 - Provider: `openrouter` ou `gemini`
 - La clé API et le modèle

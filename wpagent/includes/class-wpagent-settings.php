@@ -248,7 +248,7 @@ PROMPT;
 	}
 
 	/**
-	 * URL de la page WPagent dans l'admin, selon l'emplacement du menu.
+	 * URL de la page PKwpagent dans l'admin, selon l'emplacement du menu.
 	 */
 	public static function admin_page_url(array $args = []): string {
 		$base = self::show_under_posts_menu() ? admin_url('edit.php?page=wpagent') : admin_url('admin.php?page=wpagent');

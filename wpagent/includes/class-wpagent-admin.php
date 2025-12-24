@@ -28,7 +28,7 @@ final class WPAgent_Admin {
 		add_action('wp_ajax_wpagent_fetch_image', [self::class, 'ajax_fetch_image']);
 		add_action('wp_ajax_wpagent_remove_image', [self::class, 'ajax_remove_image']);
 
-		// Ajoute un lien WPagent dans "Tous les articles".
+		// Ajoute un lien PKwpagent dans "Tous les articles".
 		add_filter('views_edit-post', [self::class, 'posts_list_add_wpagent_link']);
 	}
 
@@ -54,8 +54,8 @@ final class WPAgent_Admin {
 		if (WPAgent_Settings::show_under_posts_menu()) {
 			add_submenu_page(
 				'edit.php',
-				'WPagent',
-				'WPagent',
+				'PKwpagent',
+				'PKwpagent',
 				'manage_options',
 				'wpagent',
 				[self::class, 'render_page']
@@ -63,8 +63,8 @@ final class WPAgent_Admin {
 		} else {
 			$icon = self::admin_icon_url_or_dashicon();
 			add_menu_page(
-				'WPagent',
-				'WPagent',
+				'PKwpagent',
+				'PKwpagent',
 				'manage_options',
 				'wpagent',
 				[self::class, 'render_page'],
@@ -398,7 +398,7 @@ final class WPAgent_Admin {
 			return $views;
 		}
 		$url = WPAgent_Settings::admin_page_url();
-		$views['wpagent'] = '<a href="' . esc_url($url) . '">WPagent</a>';
+		$views['wpagent'] = '<a href="' . esc_url($url) . '">PKwpagent</a>';
 		return $views;
 	}
 
@@ -533,7 +533,7 @@ final class WPAgent_Admin {
 				'timeout' => 20,
 				'redirection' => 5,
 				'headers' => [
-					'User-Agent' => 'WPagent/0.3 (+WordPress)',
+					'User-Agent' => 'PKwpagent/0.3 (+WordPress)',
 					'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 				],
 			]
@@ -862,7 +862,7 @@ final class WPAgent_Admin {
 
 		add_meta_box(
 			'wpagent_topic_actions',
-			'WPagent',
+			'PKwpagent',
 			[self::class, 'render_topic_actions_metabox'],
 			WPAgent_Post_Type::POST_TYPE,
 			'side',
@@ -946,7 +946,7 @@ final class WPAgent_Admin {
 			echo '<img class="wpagent-topbar-logo" src="' . esc_url($icon_url) . '" alt="" />';
 		}
 		echo '<div class="wpagent-topbar-title">';
-		echo '<div class="wpagent-topbar-name">WPagent</div>';
+		echo '<div class="wpagent-topbar-name">PKwpagent</div>';
 		echo '<div class="wpagent-topbar-subtitle">Inbox → IA → drafts WordPress</div>';
 		echo '</div>';
 		echo '</div>';
@@ -1196,7 +1196,7 @@ final class WPAgent_Admin {
 
 		echo '<div id="wpagent-config-options">';
 		echo '<div class="wpagent-toggle">';
-		echo '<div><strong>📝 Ouvrir le draft après génération</strong><div class="wpagent-muted">Sinon, tu restes sur la page WPagent.</div></div>';
+		echo '<div><strong>📝 Ouvrir le draft après génération</strong><div class="wpagent-muted">Sinon, tu restes sur la page PKwpagent.</div></div>';
 		echo '<label class="wpagent-switch" aria-label="Ouvrir le draft après génération">';
 		echo '<input type="checkbox" name="open_draft_after_generate" value="1"' . checked($open_after, true, false) . '/>';
 		echo '<span class="wpagent-slider"></span>';
@@ -1204,8 +1204,8 @@ final class WPAgent_Admin {
 		echo '</div>';
 
 		echo '<div class="wpagent-toggle">';
-		echo '<div><strong>🗂️ Afficher WPagent dans “Articles”</strong><div class="wpagent-muted">Ajoute WPagent comme sous-menu de Articles.</div></div>';
-		echo '<label class="wpagent-switch" aria-label="Afficher WPagent dans Articles">';
+		echo '<div><strong>🗂️ Afficher PKwpagent dans “Articles”</strong><div class="wpagent-muted">Ajoute PKwpagent comme sous-menu de Articles.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Afficher PKwpagent dans Articles">';
 		echo '<input type="checkbox" name="show_under_posts_menu" value="1"' . checked($show_under_posts_menu, true, false) . '/>';
 		echo '<span class="wpagent-slider"></span>';
 		echo '</label>';

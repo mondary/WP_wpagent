@@ -54,7 +54,7 @@ final class WPAgent_AI {
 			[
 				'post_type' => 'post',
 				'post_status' => 'draft',
-				'post_title' => (string) get_the_title($post),
+				'post_title' => self::build_draft_title((string) get_the_title($post)),
 				'post_content' => $result['content'],
 			],
 			true
@@ -126,6 +126,24 @@ final class WPAgent_AI {
 			$context;
 	}
 
+	private static function build_draft_title(string $base_title): string {
+		$provider = WPAgent_Settings::get_provider();
+		$model = $provider === 'gemini'
+			? WPAgent_Settings::get_gemini_model()
+			: WPAgent_Settings::get_openrouter_model();
+
+		$provider_label = $provider === 'gemini' ? 'Gemini' : 'OpenRouter';
+		$model = trim((string) $model);
+		$suffix = $model !== '' ? ($provider_label . ' ' . $model) : $provider_label;
+
+		$title = trim($base_title);
+		if ($title === '') {
+			$title = 'Draft';
+		}
+
+		return $title . ' — ' . $suffix;
+	}
+
 	/**
 	 * Récupère un extrait texte d'une URL pour ancrer la génération sur le bon sujet.
 	 *
@@ -143,7 +161,7 @@ final class WPAgent_AI {
 				'timeout' => 20,
 				'redirection' => 5,
 				'headers' => [
-					'User-Agent' => 'WPagent/0.1 (+WordPress)',
+					'User-Agent' => 'PKwpagent/0.1 (+WordPress)',
 					'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 				],
 			]
@@ -223,12 +241,12 @@ final class WPAgent_AI {
 		$api_key = (string) get_option(WPAgent_Settings::OPTION_OPENROUTER_API_KEY, '');
 		$api_key = trim($api_key);
 		if ($api_key === '') {
-			return new \WP_Error('wpagent_ai_missing_key', 'Clé API OpenRouter manquante (admin WPagent).');
+			return new \WP_Error('wpagent_ai_missing_key', 'Clé API OpenRouter manquante (admin PKwpagent).');
 		}
 
 		$model = WPAgent_Settings::get_openrouter_model();
 		$referer = home_url('/');
-		$app_title = 'WPagent';
+		$app_title = 'PKwpagent';
 
 		$resp = wp_remote_post(
 			'https://openrouter.ai/api/v1/chat/completions',

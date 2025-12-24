@@ -16,7 +16,7 @@ final class WPAgent_Post_Type {
 			self::POST_TYPE,
 			[
 				'labels' => [
-					'name' => 'WPagent — Sujets',
+					'name' => 'PKwpagent — Sujets',
 					'singular_name' => 'Sujet',
 				],
 				'public' => false,

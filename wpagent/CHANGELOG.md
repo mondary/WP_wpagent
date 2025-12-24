@@ -111,6 +111,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.30 - 2025-12-23
+- Branding: renamed WPagent to PKwpagent in UI copy and docs.
+
+## 0.3.29 - 2025-12-23
+- PWA: renamed app to PKwpagent for install display.
+
+## 0.3.28 - 2025-12-23
+- AI: draft titles now include provider/model (Gemini/OpenRouter).
+
 ## 0.3.27 - 2025-12-23
 - Admin: image button now acts as the image placeholder (replaced by thumbnail + remove).
 

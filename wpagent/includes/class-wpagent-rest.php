@@ -267,7 +267,7 @@ final class WPAgent_REST {
 		$token_esc = esc_attr($token);
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>';
-		$html .= '<title>WPagent — Capture</title>';
+		$html .= '<title>PKwpagent — Capture</title>';
 		$html .= '<style>
 			:root{color-scheme:light}
 			body{margin:0;background:#fff;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -283,7 +283,7 @@ final class WPAgent_REST {
 			small{color:#6b7280}
 		</style>';
 		$html .= '</head><body><div class="wrap"><div class="card">';
-		$html .= '<h1>WPagent — Capture</h1>';
+		$html .= '<h1>PKwpagent — Capture</h1>';
 		$html .= '<p>Ajoute un sujet à ton inbox.</p>';
 		$html .= '<form method="post" action="' . $action_url . '">';
 		$html .= '<input type="hidden" name="token" value="' . $token_esc . '"/>';
@@ -310,8 +310,8 @@ final class WPAgent_REST {
 
 		$manifest = [
 			'id' => $scope_url,
-			'name' => 'WPagent',
-			'short_name' => 'WPagent',
+			'name' => 'PKwpagent',
+			'short_name' => 'PKwpagent',
 			'start_url' => $app_url,
 			'scope' => $scope_url,
 			'display' => 'standalone',
@@ -408,7 +408,7 @@ final class WPAgent_REST {
 		$topics = esc_url(site_url('/wp-json/wpagent/v1/topics'));
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>';
-		$html .= '<title>WPagent</title>';
+		$html .= '<title>PKwpagent</title>';
 		$html .= '<link rel="manifest" href="' . $manifest . '"/>';
 		$html .= '<meta name="theme-color" content="#ffffff"/>';
 		$html .= '<style>
@@ -471,7 +471,7 @@ final class WPAgent_REST {
 			}
 		</style>';
 		$html .= '</head><body><div class="wrap">';
-		$html .= '<div class="card compact"><h1>WPagent</h1><p class="small hint">Inbox → draft WordPress.</p>';
+		$html .= '<div class="card compact"><h1>PKwpagent</h1><p class="small hint">Inbox → draft WordPress.</p>';
 		$html .= '<div class="card-actions">';
 		$html .= '<button class="btn secondary icon" type="button" data-open-drawer="connect" data-tooltip="Connexion" aria-label="Connexion"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4 4 0 1 0-4-4a4 4 0 0 0 4 4zm0 2c-4.42 0-8 2-8 4.5V21h16v-2.5c0-2.5-3.58-4.5-8-4.5z"/></svg></button>';
 		$html .= '<button class="btn secondary icon" type="button" data-open-drawer="add" data-tooltip="Ajouter un sujet" aria-label="Ajouter un sujet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg></button>';
@@ -492,7 +492,7 @@ final class WPAgent_REST {
 		$html .= '<div class="btn-row"><button class="btn secondary" id="saveToken" type="button">Enregistrer</button></div>';
 		$html .= '<div id="tokenStatus" class="status"></div></div></div>';
 		$html .= '<div class="drawer" id="drawer-install"><div class="drawer-head"><strong>Install & API</strong><button class="drawer-close" type="button" data-close-drawer="1">Fermer</button></div>';
-		$html .= '<div class="drawer-body"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “WPagent”.</p>';
+		$html .= '<div class="drawer-body"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “PKwpagent”.</p>';
 		$html .= '<p class="small">API: <code>' . esc_html($inbox) . '</code> / <code>' . esc_html($topics) . '</code></p></div></div>';
 
 		$html .= '<script>
@@ -696,7 +696,7 @@ final class WPAgent_REST {
 		];
 
 		$html = '<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>';
-		$html .= '<title>WPagent — Share</title></head><body>';
+		$html .= '<title>PKwpagent — Share</title></head><body>';
 		$html .= '<script>
 			(function(){
 				const data=' . wp_json_encode($payload) . ';
