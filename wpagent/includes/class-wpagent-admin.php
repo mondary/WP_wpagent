@@ -1123,6 +1123,7 @@ final class WPAgent_Admin {
 					submit_button('Générer un draft', 'primary', 'wpagent_generate_draft_submit_' . $topic_id, false);
 					echo '</form>';
 
+					echo '<span class="wpagent-image-slot">';
 					$img_id = (int) get_post_meta($topic_id, '_wpagent_source_image_id', true);
 					if ($img_id > 0 && get_post_type($img_id) === 'attachment') {
 						$thumb = wp_get_attachment_image_url($img_id, 'thumbnail');
@@ -1136,10 +1137,9 @@ final class WPAgent_Admin {
 							echo '</span>';
 						}
 					} else {
-						echo '<span class="wpagent-image-inline" aria-hidden="true"></span>';
+						echo '<button type="button" class="wpagent-icon-btn wpagent-image-btn" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr($image_nonce) . '" data-remove-nonce="' . esc_attr($image_remove_nonce) . '" title="Récupérer une image"><span class="dashicons dashicons-format-image" aria-hidden="true"></span><span class="screen-reader-text">Récupérer une image</span></button>';
 					}
-
-					echo '<button type="button" class="wpagent-icon-btn wpagent-image-btn" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr($image_nonce) . '" title="Récupérer une image"><span class="dashicons dashicons-format-image" aria-hidden="true"></span><span class="screen-reader-text">Récupérer une image</span></button>';
+					echo '</span>';
 					echo '<span class="spinner wpagent-inline-spinner wpagent-image-spinner" aria-hidden="true"></span>';
 					$actions_inner = ob_get_clean();
 					$img_error = (string) get_post_meta($topic_id, '_wpagent_image_error', true);

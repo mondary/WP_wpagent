@@ -111,6 +111,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.27 - 2025-12-23
+- Admin: image button now acts as the image placeholder (replaced by thumbnail + remove).
+
+## 0.3.26 - 2025-12-23
+- Admin: fixed manual image fetch UI updates across both action rows.
+
+## 0.3.25 - 2025-12-23
+- Admin: show a loader on the image fetch button while it runs.
+
 ## 0.3.24 - 2025-12-23
 - Admin: increased pre-prompt drawer size to reduce scrolling.
 

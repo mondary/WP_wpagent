@@ -130,6 +130,11 @@ body.wpagent-admin-page #wpbody-content {
 	position: relative;
 }
 
+.wpagent-image-slot {
+	display: inline-flex;
+	align-items: center;
+}
+
 .wpagent-image-remove {
 	position: absolute;
 	top: -7px;
@@ -193,6 +198,33 @@ body.wpagent-admin-page #wpbody-content {
 .wpagent-icon-btn[aria-disabled="true"] {
 	cursor: default;
 	opacity: 0.8;
+}
+
+.wpagent-image-btn.is-loading {
+	position: relative;
+}
+
+.wpagent-image-btn.is-loading .dashicons {
+	opacity: 0;
+}
+
+.wpagent-image-btn.is-loading::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	width: 14px;
+	height: 14px;
+	border: 2px solid #cbd5e1;
+	border-top-color: #111827;
+	border-radius: 50%;
+	animation: wpagent-spin 0.9s linear infinite;
+}
+
+@keyframes wpagent-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .wpagent-hidden {

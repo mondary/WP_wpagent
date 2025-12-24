@@ -306,24 +306,28 @@
       });
     });
 
-    // Non-blocking image fetch per topic row.
-    document.querySelectorAll("button.wpagent-image-btn").forEach((btnEl) => {
-      btnEl.addEventListener("click", async () => {
-        if (btnEl.dataset.running === "1") return;
-        const topicId = btnEl.getAttribute("data-topic-id") || "";
-        const nonce = btnEl.getAttribute("data-nonce") || "";
+    // Non-blocking image fetch/remove per topic row (delegated).
+    document.addEventListener("click", async (e) => {
+      const fetchBtn = e.target.closest("button.wpagent-image-btn");
+      const removeBtn = e.target.closest("button.wpagent-image-remove");
+
+      if (fetchBtn) {
+        if (fetchBtn.dataset.running === "1") return;
+        const topicId = fetchBtn.getAttribute("data-topic-id") || "";
+        const nonce = fetchBtn.getAttribute("data-nonce") || "";
         if (!topicId || !nonce) return;
 
-        const tr = btnEl.closest("tr");
-        const spinnerEl = tr ? tr.querySelector(".wpagent-image-spinner") : null;
-        const slotEl = tr ? tr.querySelector(".wpagent-image-inline") : null;
+        const tr = fetchBtn.closest("tr");
+        const spinnerEls = tr ? tr.querySelectorAll(".wpagent-image-spinner") : [];
+        const slotEls = tr ? tr.querySelectorAll(".wpagent-image-slot") : [];
 
         try {
-          btnEl.dataset.running = "1";
-          btnEl.disabled = true;
-          btnEl.title = "Récupération…";
+          fetchBtn.dataset.running = "1";
+          fetchBtn.disabled = true;
+          fetchBtn.classList.add("is-loading");
+          fetchBtn.title = "Récupération…";
           setRunning(+1);
-          if (spinnerEl) spinnerEl.classList.add("is-active");
+          spinnerEls.forEach((el) => el.classList.add("is-active"));
 
           const payload = new URLSearchParams();
           payload.set("action", "wpagent_fetch_image");
@@ -347,52 +351,67 @@
             throw new Error((data && data.message) || "Erreur");
           }
 
-          // Render thumbnail next to the Fetch button.
-          if (slotEl && data.thumb_url) {
-            slotEl.innerHTML = "";
-            const link = document.createElement("a");
-            link.href = data.full_url || data.thumb_url;
-            link.target = "_blank";
-            link.rel = "noreferrer noopener";
+          if (data.thumb_url) {
+            slotEls.forEach((slotEl) => {
+              slotEl.innerHTML = "";
+              const wrap = document.createElement("span");
+              wrap.className = "wpagent-image-inline";
 
-            const img = document.createElement("img");
-            img.src = data.thumb_url;
-            img.alt = "";
-            link.appendChild(img);
+              const remove = document.createElement("button");
+              remove.type = "button";
+              remove.className = "wpagent-image-remove";
+              remove.setAttribute("data-topic-id", topicId);
+              remove.setAttribute("data-nonce", nonce);
+              if (fetchBtn.dataset.removeNonce) {
+                remove.setAttribute("data-nonce", fetchBtn.dataset.removeNonce);
+              }
+              remove.title = "Supprimer l’image";
+              remove.textContent = "×";
 
-            slotEl.appendChild(link);
+              const link = document.createElement("a");
+              link.href = data.full_url || data.thumb_url;
+              link.target = "_blank";
+              link.rel = "noreferrer noopener";
+
+              const img = document.createElement("img");
+              img.src = data.thumb_url;
+              img.alt = "";
+
+              link.appendChild(img);
+              wrap.appendChild(remove);
+              wrap.appendChild(link);
+              slotEl.appendChild(wrap);
+            });
           }
 
-          btnEl.title = "Image récupérée";
+          fetchBtn.title = "Image récupérée";
         } catch (err) {
-          btnEl.title = err && err.message ? err.message : "Erreur";
+          fetchBtn.title = err && err.message ? err.message : "Erreur";
         } finally {
           setRunning(-1);
-          btnEl.dataset.running = "0";
-          btnEl.disabled = false;
-          if (spinnerEl) spinnerEl.classList.remove("is-active");
+          fetchBtn.dataset.running = "0";
+          fetchBtn.disabled = false;
+          fetchBtn.classList.remove("is-loading");
+          spinnerEls.forEach((el) => el.classList.remove("is-active"));
         }
-      });
-    });
+      }
 
-    // Remove fetched image (non-blocking).
-    document.querySelectorAll("button.wpagent-image-remove").forEach((btnEl) => {
-      btnEl.addEventListener("click", async (e) => {
+      if (removeBtn) {
         e.preventDefault();
         e.stopPropagation();
-        if (btnEl.dataset.running === "1") return;
-        const topicId = btnEl.getAttribute("data-topic-id") || "";
-        const nonce = btnEl.getAttribute("data-nonce") || "";
+        if (removeBtn.dataset.running === "1") return;
+        const topicId = removeBtn.getAttribute("data-topic-id") || "";
+        const nonce = removeBtn.getAttribute("data-nonce") || "";
         if (!topicId || !nonce) return;
 
-        const tr = btnEl.closest("tr");
-        const spinnerEl = tr ? tr.querySelector(".wpagent-image-spinner") : null;
-        const slotEl = tr ? tr.querySelector(".wpagent-image-inline") : null;
+        const tr = removeBtn.closest("tr");
+        const spinnerEls = tr ? tr.querySelectorAll(".wpagent-image-spinner") : [];
+        const slotEls = tr ? tr.querySelectorAll(".wpagent-image-slot") : [];
 
         try {
-          btnEl.dataset.running = "1";
+          removeBtn.dataset.running = "1";
           setRunning(+1);
-          if (spinnerEl) spinnerEl.classList.add("is-active");
+          spinnerEls.forEach((el) => el.classList.add("is-active"));
 
           const payload = new URLSearchParams();
           payload.set("action", "wpagent_remove_image");
@@ -416,18 +435,29 @@
             throw new Error((data && data.message) || "Erreur");
           }
 
-          if (slotEl) {
+          slotEls.forEach((slotEl) => {
             slotEl.innerHTML = "";
-          }
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "wpagent-icon-btn wpagent-image-btn";
+            button.setAttribute("data-topic-id", topicId);
+            button.setAttribute("data-nonce", nonce);
+            if (removeBtn.dataset.nonce) {
+              button.setAttribute("data-remove-nonce", removeBtn.dataset.nonce);
+            }
+            button.title = "Récupérer une image";
+            button.innerHTML =
+              '<span class="dashicons dashicons-format-image" aria-hidden="true"></span><span class="screen-reader-text">Récupérer une image</span>';
+            slotEl.appendChild(button);
+          });
         } catch (err) {
-          // Keep UI stable; error is shown via title.
-          btnEl.title = err && err.message ? err.message : "Erreur";
+          removeBtn.title = err && err.message ? err.message : "Erreur";
         } finally {
           setRunning(-1);
-          btnEl.dataset.running = "0";
-          if (spinnerEl) spinnerEl.classList.remove("is-active");
+          removeBtn.dataset.running = "0";
+          spinnerEls.forEach((el) => el.classList.remove("is-active"));
         }
-      });
+      }
     });
 
     syncProviderUI();
