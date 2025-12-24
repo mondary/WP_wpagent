@@ -111,6 +111,15 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.23 - 2025-12-23
+- Admin: split drawers so each topbar tab opens its own specific content.
+
+## 0.3.22 - 2025-12-23
+- Admin: topbar tabs now open the configuration drawer.
+
+## 0.3.21 - 2025-12-23
+- Admin: converted add/config panels to bottom-sheet drawers with blurred backdrop.
+
 ## 0.3.20 - 2025-12-23
 - PWA: added tooltips for action icons.
 

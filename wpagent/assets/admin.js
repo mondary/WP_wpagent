@@ -57,10 +57,54 @@
           localStorage.setItem(panelStorageKey, activePanel);
         } catch (e) {}
         applyActivePanel();
+        openDrawer(key);
       });
     });
 
     applyActivePanel();
+
+    // Drawer controls (add/config/panels).
+    const drawerBackdrop = qs("wpagentDrawerBackdrop");
+    const drawerMap = {
+      add: qs("wpagent-drawer-add"),
+      config: qs("wpagent-drawer-config"),
+      prompt: qs("wpagent-drawer-prompt"),
+      provider: qs("wpagent-drawer-provider"),
+      access: qs("wpagent-drawer-access"),
+    };
+
+    function closeDrawers() {
+      if (drawerBackdrop) drawerBackdrop.classList.remove("open");
+      document.body.classList.remove("wpagent-drawer-open");
+      Object.keys(drawerMap).forEach((key) => {
+        const el = drawerMap[key];
+        if (el) el.classList.remove("open");
+      });
+    }
+
+    function openDrawer(key) {
+      const target = drawerMap[key];
+      if (!target) return;
+      closeDrawers();
+      if (drawerBackdrop) drawerBackdrop.classList.add("open");
+      document.body.classList.add("wpagent-drawer-open");
+      target.classList.add("open");
+    }
+
+    document.querySelectorAll("[data-wpagent-open-drawer]").forEach((btnEl) => {
+      btnEl.addEventListener("click", () => {
+        const key = btnEl.getAttribute("data-wpagent-open-drawer");
+        if (key) openDrawer(key);
+      });
+    });
+
+    document.querySelectorAll("[data-wpagent-close-drawer]").forEach((btnEl) => {
+      btnEl.addEventListener("click", closeDrawers);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeDrawers();
+    });
 
     const originalTitle = document.title;
     let runningCount = 0;

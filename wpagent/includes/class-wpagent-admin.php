@@ -939,7 +939,7 @@ final class WPAgent_Admin {
 		$auto_image_all = WPAgent_Settings::auto_image_all();
 		$auto_image_capture = WPAgent_Settings::auto_image_capture();
 
-		echo '<div class="wrap wpagent-admin">';
+		echo '<div class="wrap wpagent-admin wpagent-drawer-layout">';
 		echo '<div class="wpagent-topbar">';
 		echo '<div class="wpagent-topbar-left">';
 		if ($icon_url !== '') {
@@ -954,6 +954,8 @@ final class WPAgent_Admin {
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="true" aria-pressed="true" aria-controls="wpagent-panel-prompt" data-wpagent-panel="prompt" title="Pré-prompt"><span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">Pré-prompt</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-provider" data-wpagent-panel="provider" title="Provider & modèle"><span class="dashicons dashicons-cloud" aria-hidden="true"></span><span class="screen-reader-text">Provider</span></button>';
 		echo '<button type="button" class="wpagent-icon-btn" role="tab" aria-selected="false" aria-pressed="false" aria-controls="wpagent-panel-access" data-wpagent-panel="access" title="Accès & endpoints"><span class="dashicons dashicons-shield" aria-hidden="true"></span><span class="screen-reader-text">Accès</span></button>';
+		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-open-drawer="add" title="Ajouter un sujet"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span><span class="screen-reader-text">Ajouter un sujet</span></button>';
+		echo '<button type="button" class="wpagent-icon-btn" data-wpagent-open-drawer="config" title="Configuration"><span class="dashicons dashicons-admin-generic" aria-hidden="true"></span><span class="screen-reader-text">Configuration</span></button>';
 		echo '<button type="submit" form="wpagent-settings-form" class="button wpagent-save-btn" title="Enregistrer la configuration">Enregistrer</button>';
 		echo '</div>';
 		echo '</div>';
@@ -986,7 +988,8 @@ final class WPAgent_Admin {
 
 		echo '<div class="wpagent-layout">';
 		echo '<main class="wpagent-main">';
-
+		$add_section_html = '';
+		ob_start();
 		echo '<section class="wpagent-card">';
 		echo '<h2>Ajouter un sujet</h2>';
 		echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
@@ -999,6 +1002,7 @@ final class WPAgent_Admin {
 		echo '</form>';
 		echo '<p class="wpagent-muted" style="margin:10px 0 0">Raccourci téléphone: <a href="' . esc_url($pwa_url) . '" target="_blank" rel="noreferrer noopener">PWA</a> · <a href="' . esc_url($capture_url) . '" target="_blank" rel="noreferrer noopener">Capture</a></p>';
 		echo '</section>';
+		$add_section_html = ob_get_clean();
 
 		$filter = isset($_GET['filter']) ? sanitize_key((string) wp_unslash($_GET['filter'])) : 'all';
 		if (!in_array($filter, ['all', 'todo', 'generated'], true)) {
@@ -1177,13 +1181,18 @@ final class WPAgent_Admin {
 		echo '</section>';
 		echo '</main>';
 
-		echo '<aside class="wpagent-sidebar">';
-
-		echo '<section class="wpagent-card">';
-		echo '<h2>Configuration</h2>';
+		$settings_form_open = '';
+		ob_start();
 		echo '<form id="wpagent-settings-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
 		wp_nonce_field('wpagent_save_settings', 'wpagent_save_settings_nonce');
 		echo '<input type="hidden" name="action" value="wpagent_save_settings"/>';
+		$settings_form_open = ob_get_clean();
+
+		$config_section_html = '';
+		ob_start();
+
+		echo '<section class="wpagent-card">';
+		echo '<h2>Configuration</h2>';
 
 		echo '<div id="wpagent-config-options">';
 		echo '<div class="wpagent-toggle">';
@@ -1243,7 +1252,13 @@ final class WPAgent_Admin {
 		echo '</div>';
 		echo '</div>';
 
-		echo '<div id="wpagent-panel-prompt" data-wpagent-panel-content="prompt" class="wpagent-panel">';
+		echo '</section>';
+		$config_section_html = ob_get_clean();
+
+		$prompt_panel_html = '';
+		ob_start();
+		echo '<section class="wpagent-card wpagent-panel" id="wpagent-panel-prompt" data-wpagent-panel-content="prompt">';
+		echo '<h2>Pré-prompt</h2>';
 		echo '<div class="wpagent-field" style="margin-top:14px">';
 		echo '<label for="system_prompt">🧠 Pré-prompt</label>';
 		echo '<div class="wpagent-muted">Astuce: si tu veux revenir au pré-prompt par défaut, clique “Réinitialiser”.</div>';
@@ -1252,9 +1267,14 @@ final class WPAgent_Admin {
 		submit_button('Réinitialiser', 'secondary', 'wpagent_reset_preprompt', false);
 		echo '</div>';
 		echo '</div>';
-		echo '</div>';
+		echo '</section>';
+		$prompt_panel_html = ob_get_clean();
 
-		echo '<div id="wpagent-panel-provider" data-wpagent-panel-content="provider" class="wpagent-panel wpagent-hidden">';
+		$provider_panel_html = '';
+		ob_start();
+
+		echo '<section class="wpagent-card wpagent-panel wpagent-hidden" id="wpagent-panel-provider" data-wpagent-panel-content="provider">';
+		echo '<h2>Provider & modèle</h2>';
 		echo '<div class="wpagent-field">';
 		echo '<label for="provider">Provider</label>';
 		echo '<select name="provider" id="provider">';
@@ -1302,12 +1322,13 @@ final class WPAgent_Admin {
 		echo '</div>';
 
 		echo '</div>';
+		echo '</section>';
+		$provider_panel_html = ob_get_clean();
 
-		echo '</form>';
-
-		echo '<div id="wpagent-panel-access" data-wpagent-panel-content="access" class="wpagent-panel wpagent-hidden">';
-		echo '<hr style="border:0;border-top:1px solid #e5e7eb;margin:14px 0" />';
-		echo '<h2 style="margin:0 0 12px;font-size:14px">Accès</h2>';
+		$access_panel_html = '';
+		ob_start();
+		echo '<section class="wpagent-card wpagent-panel wpagent-hidden" id="wpagent-panel-access" data-wpagent-panel-content="access">';
+		echo '<h2>Accès & endpoints</h2>';
 		echo '<div class="wpagent-field">';
 		echo '<label>Token</label>';
 		echo '<div class="wpagent-kv">';
@@ -1339,11 +1360,18 @@ final class WPAgent_Admin {
 		echo '<div class="wpagent-muted" style="margin-top:6px">POST: token + text (+ url/source_title).</div>';
 		echo '</div>';
 
-		echo '</div>'; // panel access
 		echo '</section>';
+		$access_panel_html = ob_get_clean();
 
-		echo '</aside>';
 		echo '</div>'; // layout
+		echo '<div class="wpagent-drawer-backdrop" id="wpagentDrawerBackdrop" data-wpagent-close-drawer="1"></div>';
+		echo '<div class="wpagent-drawer" id="wpagent-drawer-add"><div class="wpagent-drawer-head"><strong>Ajouter un sujet</strong><button type="button" class="button" data-wpagent-close-drawer="1">Fermer</button></div><div class="wpagent-drawer-body">' . $add_section_html . '</div></div>';
+		echo $settings_form_open;
+		echo '<div class="wpagent-drawer" id="wpagent-drawer-config"><div class="wpagent-drawer-head"><strong>Configuration</strong><button type="button" class="button" data-wpagent-close-drawer="1">Fermer</button></div><div class="wpagent-drawer-body">' . $config_section_html . '</div></div>';
+		echo '<div class="wpagent-drawer" id="wpagent-drawer-prompt"><div class="wpagent-drawer-head"><strong>Pré-prompt</strong><button type="button" class="button" data-wpagent-close-drawer="1">Fermer</button></div><div class="wpagent-drawer-body">' . $prompt_panel_html . '</div></div>';
+		echo '<div class="wpagent-drawer" id="wpagent-drawer-provider"><div class="wpagent-drawer-head"><strong>Provider & modèle</strong><button type="button" class="button" data-wpagent-close-drawer="1">Fermer</button></div><div class="wpagent-drawer-body">' . $provider_panel_html . '</div></div>';
+		echo '</form>';
+		echo '<div class="wpagent-drawer" id="wpagent-drawer-access"><div class="wpagent-drawer-head"><strong>Accès & endpoints</strong><button type="button" class="button" data-wpagent-close-drawer="1">Fermer</button></div><div class="wpagent-drawer-body">' . $access_panel_html . '</div></div>';
 		echo '</div>'; // wrap
 	}
 

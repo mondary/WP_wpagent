@@ -234,6 +234,10 @@ body.wpagent-admin-page #wpbody-content {
 	overflow: visible;
 }
 
+.wpagent-drawer-layout .wpagent-layout {
+	grid-template-columns: 1fr;
+}
+
 @media (max-width: 1080px) {
 	.wpagent-layout {
 		grid-template-columns: 1fr;
@@ -577,6 +581,57 @@ body.wpagent-admin-page #wpbody-content {
 .wpagent-admin-page .wpagent-admin .widefat th,
 .wpagent-admin-page .wpagent-admin .widefat td {
 	border-color: var(--wpagent-border);
+}
+
+.wpagent-drawer-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.25);
+	backdrop-filter: blur(6px);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease;
+	z-index: 100000;
+}
+
+.wpagent-drawer-backdrop.open {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.wpagent-drawer {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: -100%;
+	background: #fff;
+	border-radius: 18px 18px 0 0;
+	box-shadow: 0 -24px 60px rgba(17, 24, 39, 0.2);
+	transition: bottom 0.25s ease;
+	z-index: 100010;
+	max-height: 82vh;
+	overflow: auto;
+}
+
+.wpagent-drawer.open {
+	bottom: 0;
+}
+
+.wpagent-drawer-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 14px 16px;
+	border-bottom: 1px solid var(--wpagent-border);
+}
+
+.wpagent-drawer-body {
+	padding: 14px 16px;
+}
+
+body.wpagent-drawer-open {
+	overflow: hidden;
 }
 
 .wpagent-admin-page .wpagent-admin .widefat thead th {
