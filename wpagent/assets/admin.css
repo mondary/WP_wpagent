@@ -630,6 +630,14 @@ body.wpagent-admin-page #wpbody-content {
 	padding: 14px 16px;
 }
 
+#wpagent-drawer-prompt {
+	max-height: 92vh;
+}
+
+#wpagent-drawer-prompt textarea#system_prompt {
+	min-height: 60vh;
+}
+
 body.wpagent-drawer-open {
 	overflow: hidden;
 }
