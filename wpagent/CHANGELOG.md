@@ -111,6 +111,9 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.13 - 2025-12-23
+- PWA: compressed the mobile layout so the inbox list appears sooner; connection/install sections are now collapsible.
+
 ## 0.3.12 - 2025-12-23
 - PWA: updated manifest icon purpose to keep transparent icons without forced white background; manifest id now matches scope to avoid collision with another PWA.
 

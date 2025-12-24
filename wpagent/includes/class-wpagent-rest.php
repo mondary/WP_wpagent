@@ -413,43 +413,64 @@ final class WPAgent_REST {
 		$html .= '<style>
 			:root{color-scheme:light;--bg:#ffffff;--card:#ffffff;--text:#111827;--muted:#6b7280;--acc:#111827;--ok:#166534;--err:#b91c1c;--border:#e5e7eb}
 			body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:var(--text)}
-			.wrap{max-width:860px;margin:0 auto;padding:18px}
-			.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin:14px 0;box-shadow:0 18px 50px rgba(17,24,39,.08)}
-			h1{font-size:20px;margin:8px 0 0}
-			p{color:var(--muted);margin:6px 0 0}
-			label{display:block;font-size:12px;color:var(--muted);margin-top:10px}
-			input,textarea,select{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:16px;box-sizing:border-box}
-			textarea{min-height:120px;resize:vertical}
+			.wrap{max-width:860px;margin:0 auto;padding:16px}
+			.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 12px 36px rgba(17,24,39,.08)}
+			.card.compact{padding:12px}
+			.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+			h1{font-size:19px;margin:0}
+			h2{font-size:15px;margin:0}
+			p{color:var(--muted);margin:4px 0 0}
+			label{display:block;font-size:12px;color:var(--muted);margin-top:8px}
+			.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+			input,textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:15px;box-sizing:border-box}
+			textarea{min-height:96px;resize:vertical}
 			.row{display:grid;grid-template-columns:1fr;gap:10px}
-			.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:12px 14px;background:var(--acc);color:#fff;font-weight:650;font-size:16px}
+			.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:10px;padding:10px 12px;background:var(--acc);color:#fff;font-weight:650;font-size:15px}
 			.btn.secondary{background:#f3f4f6;color:#111827;border:1px solid var(--border)}
+			.btn.sm{padding:6px 10px;font-size:13px;border-radius:10px}
+			.btn-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 			.small{font-size:12px;color:var(--muted)}
 			.status{margin-top:10px;font-size:13px}
 			.status.ok{color:var(--ok)} .status.err{color:var(--err)}
-			.items{margin-top:8px}
-			.item{padding:10px;border-radius:12px;background:#fafafa;border:1px solid var(--border);margin:8px 0}
+			.items{margin-top:10px}
+			.item{padding:8px 10px;border-radius:12px;background:#fafafa;border:1px solid var(--border);margin:6px 0}
 				.item a{display:block;margin-bottom:4px;color:var(--text);text-decoration:none;font-weight:750}
 				.item a:active,.item a:focus,.item a:hover{text-decoration:underline}
 			code{background:#f3f4f6;padding:2px 6px;border-radius:8px}
+			details.card{padding:0}
+			details.card > summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:650}
+			details.card > summary::-webkit-details-marker{display:none}
+			details.card[open] > summary{border-bottom:1px solid var(--border)}
+			.card-body{padding:12px 14px}
+			@media (max-width:600px){
+				.wrap{padding:12px}
+				.card{padding:10px;margin:8px 0;border-radius:14px}
+				h1{font-size:18px}
+				.btn{width:100%}
+				.btn.sm{width:auto}
+				textarea{min-height:80px}
+				.hint{display:none}
+				.card-body{padding:10px 12px}
+				details.card > summary{padding:10px 12px}
+			}
 		</style>';
 		$html .= '</head><body><div class="wrap">';
-		$html .= '<div class="card"><h1>WPagent</h1><p>Inbox de sujets → génération IA → draft WordPress → publication.</p></div>';
-		$html .= '<div class="card"><h2 style="margin:0;font-size:16px">Connexion</h2><p class="small">Saisis ton token une fois (stocké localement sur ton téléphone).</p>';
-		$html .= '<label>Token</label><input id="token" placeholder="colle le token"/>';
-		$html .= '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">';
-			$html .= '<button class="btn secondary" id="saveToken" type="button">Enregistrer</button>';
-		$html .= '</div><div id="tokenStatus" class="status"></div></div>';
-		$html .= '<div class="card"><h2 style="margin:0;font-size:16px">Ajouter un sujet</h2>';
-		$html .= '<label>Texte / idée</label><textarea id="text" placeholder="Écris ton idée…"></textarea>';
-		$html .= '<label>URL (optionnel)</label><input id="url" type="url" placeholder="https://…"/>';
-		$html .= '<label>Titre source (optionnel)</label><input id="source_title" type="text" placeholder="Titre…"/>';
-		$html .= '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">';
-		$html .= '<button class="btn" id="send" type="button">Ajouter à l’inbox</button>';
-		$html .= '<button class="btn secondary" id="refresh" type="button">Rafraîchir la liste</button>';
-		$html .= '</div><div id="sendStatus" class="status"></div>';
-		$html .= '<div class="items" id="items"></div></div>';
-			$html .= '<div class="card"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “WPagent”.</p>';
-		$html .= '<p class="small">API: <code>' . esc_html($inbox) . '</code> / <code>' . esc_html($topics) . '</code></p></div>';
+		$html .= '<div class="card compact"><h1>WPagent</h1><p class="small hint">Inbox → draft WordPress.</p></div>';
+		$html .= '<div class="card"><div class="card-head"><h2>Inbox</h2>';
+		$html .= '<button class="btn secondary sm" id="refresh" type="button">Rafraîchir</button></div>';
+		$html .= '<div id="listStatus" class="status"></div><div class="items" id="items"></div></div>';
+		$html .= '<div class="card"><div class="card-head"><h2>Ajouter un sujet</h2></div>';
+		$html .= '<label class="sr-only" for="text">Texte / idée</label><textarea id="text" placeholder="Écris ton idée…"></textarea>';
+		$html .= '<label class="sr-only" for="url">URL (optionnel)</label><input id="url" type="url" placeholder="https://…"/>';
+		$html .= '<label class="sr-only" for="source_title">Titre source (optionnel)</label><input id="source_title" type="text" placeholder="Titre…"/>';
+		$html .= '<div class="btn-row"><button class="btn" id="send" type="button">Ajouter à l’inbox</button></div>';
+		$html .= '<div id="sendStatus" class="status"></div></div>';
+		$html .= '<details class="card compact"><summary>Connexion</summary><div class="card-body"><p class="small hint">Token stocké localement.</p>';
+		$html .= '<label class="sr-only" for="token">Token</label><input id="token" placeholder="colle le token"/>';
+		$html .= '<div class="btn-row"><button class="btn secondary" id="saveToken" type="button">Enregistrer</button></div>';
+		$html .= '<div id="tokenStatus" class="status"></div></div></details>';
+		$html .= '<details class="card compact"><summary>Install & API</summary><div class="card-body"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “WPagent”.</p>';
+		$html .= '<p class="small">API: <code>' . esc_html($inbox) . '</code> / <code>' . esc_html($topics) . '</code></p></div></details>';
 
 		$html .= '<script>
 			const inboxUrl=' . json_encode($inbox) . ';
@@ -535,7 +556,7 @@ final class WPAgent_REST {
 					await refresh();
 				}catch(e){ setStatus($("sendStatus"),e.message||"Erreur",false); }
 			});
-			$("refresh").addEventListener("click",async()=>{ try{ await refresh(); setStatus($("sendStatus"),"Liste à jour.",true);}catch(e){ setStatus($("sendStatus"),e.message||"Erreur",false);} });
+			$("refresh").addEventListener("click",async()=>{ try{ await refresh(); setStatus($("listStatus"),"Liste à jour.",true);}catch(e){ setStatus($("listStatus"),e.message||"Erreur",false);} });
 			if("serviceWorker" in navigator){
 				navigator.serviceWorker.register(swUrl,{scope:swScope}).catch(()=>{});
 			}
