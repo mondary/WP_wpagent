@@ -38,10 +38,15 @@ final class WPAgent_Post_Type {
 		$text = isset($args['text']) ? (string) $args['text'] : '';
 		$url = isset($args['url']) ? (string) $args['url'] : '';
 		$source_title = isset($args['source_title']) ? (string) $args['source_title'] : '';
+		$source = isset($args['source']) ? (string) $args['source'] : 'unknown';
 
 		$text = wp_kses_post($text);
 		$url = esc_url_raw($url);
 		$source_title = sanitize_text_field($source_title);
+		$source = sanitize_key($source);
+		if (!in_array($source, ['capture', 'admin'], true)) {
+			$source = 'unknown';
+		}
 
 		if (trim(wp_strip_all_tags($text)) === '') {
 			return new \WP_Error('wpagent_empty', 'Le champ "text" est requis.', ['status' => 400]);
@@ -87,7 +92,32 @@ final class WPAgent_Post_Type {
 			update_post_meta($post_id, '_wpagent_source_title', $source_title);
 		}
 		update_post_meta($post_id, '_wpagent_captured_at', time());
+		update_post_meta($post_id, '_wpagent_capture_source', $source);
+
+		self::maybe_auto_generate((int) $post_id, $source, $url);
 
 		return (int) $post_id;
+	}
+
+	private static function maybe_auto_generate(int $post_id, string $source, string $source_url): void {
+		$auto_image_scope = WPAgent_Settings::auto_image_scope();
+		if (self::scope_applies($auto_image_scope, $source)) {
+			WPAgent_Admin::auto_fetch_image_for_topic($post_id, $source_url);
+		}
+
+		$auto_draft_scope = WPAgent_Settings::auto_draft_scope();
+		if (self::scope_applies($auto_draft_scope, $source)) {
+			WPAgent_AI::generate_draft_from_topic($post_id);
+		}
+	}
+
+	private static function scope_applies(string $scope, string $source): bool {
+		if ($scope === 'all') {
+			return true;
+		}
+		if ($scope === 'capture') {
+			return $source === 'capture';
+		}
+		return false;
 	}
 }

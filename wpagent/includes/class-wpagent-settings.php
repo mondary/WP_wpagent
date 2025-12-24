@@ -15,6 +15,10 @@ final class WPAgent_Settings {
 	public const OPTION_OPEN_DRAFT_AFTER_GENERATE = 'wpagent_open_draft_after_generate';
 	public const OPTION_SHOW_UNDER_POSTS_MENU = 'wpagent_show_under_posts_menu';
 	public const OPTION_FETCH_SOURCE_BEFORE_AI = 'wpagent_fetch_source_before_ai';
+	public const OPTION_AUTO_DRAFT_ALL = 'wpagent_auto_draft_all';
+	public const OPTION_AUTO_DRAFT_CAPTURE = 'wpagent_auto_draft_capture';
+	public const OPTION_AUTO_IMAGE_ALL = 'wpagent_auto_image_all';
+	public const OPTION_AUTO_IMAGE_CAPTURE = 'wpagent_auto_image_capture';
 
 	public static function init(): void {
 		// Reserved for future hooks.
@@ -200,7 +204,47 @@ PROMPT;
 
 	public static function fetch_source_before_ai(): bool {
 		$value = get_option(self::OPTION_FETCH_SOURCE_BEFORE_AI, '1');
-		return $value === '1' || $value === 1 || $value === true || $value === 'true';
+		return self::option_truthy($value);
+	}
+
+	public static function auto_draft_all(): bool {
+		$value = get_option(self::OPTION_AUTO_DRAFT_ALL, '0');
+		return self::option_truthy($value);
+	}
+
+	public static function auto_draft_capture(): bool {
+		$value = get_option(self::OPTION_AUTO_DRAFT_CAPTURE, '0');
+		return self::option_truthy($value);
+	}
+
+	public static function auto_image_all(): bool {
+		$value = get_option(self::OPTION_AUTO_IMAGE_ALL, '0');
+		return self::option_truthy($value);
+	}
+
+	public static function auto_image_capture(): bool {
+		$value = get_option(self::OPTION_AUTO_IMAGE_CAPTURE, '0');
+		return self::option_truthy($value);
+	}
+
+	public static function auto_draft_scope(): string {
+		if (self::auto_draft_all()) {
+			return 'all';
+		}
+		if (self::auto_draft_capture()) {
+			return 'capture';
+		}
+		return 'off';
+	}
+
+	public static function auto_image_scope(): string {
+		if (self::auto_image_all()) {
+			return 'all';
+		}
+		if (self::auto_image_capture()) {
+			return 'capture';
+		}
+		return 'off';
 	}
 
 	/**
@@ -292,5 +336,9 @@ PROMPT;
 
 	public static function get_default_system_prompt(): string {
 		return self::default_system_prompt();
+	}
+
+	private static function option_truthy($value): bool {
+		return $value === '1' || $value === 1 || $value === true || $value === 'true';
 	}
 }

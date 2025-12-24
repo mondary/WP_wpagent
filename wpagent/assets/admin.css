@@ -289,6 +289,11 @@ body.wpagent-admin-page #wpbody-content {
 	gap: 6px;
 }
 
+.wpagent-row-actions-mobile {
+	display: none;
+	margin-top: 8px;
+}
+
 @media (max-width: 980px) {
 	.wpagent-table {
 		table-layout: auto;
@@ -310,6 +315,17 @@ body.wpagent-admin-page #wpbody-content {
 	.wpagent-row-actions .wpagent-generate-form .button-primary {
 		width: 100%;
 		max-width: 100%;
+	}
+}
+
+@media (max-width: 782px) {
+	.wpagent-table th:last-child,
+	.wpagent-table td:last-child {
+		display: none;
+	}
+	.wpagent-row-actions-mobile {
+		display: flex;
+		justify-content: flex-start;
 	}
 }
 
@@ -408,6 +424,10 @@ body.wpagent-admin-page #wpbody-content {
 	gap: 10px;
 	flex-wrap: wrap;
 	align-items: center;
+}
+
+.wpagent-image-error {
+	margin-top: 6px;
 }
 
 .wpagent-actions .button {

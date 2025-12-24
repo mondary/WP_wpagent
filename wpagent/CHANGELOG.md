@@ -111,6 +111,19 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## 0.3.11 - 2025-12-20
 - Admin: removing a fetched topic image now also deletes the media file from the Media Library.
 
+## 0.3.17 - 2025-12-23
+- PWA: added bottom-sheet drawers for add/connect/install with backdrop blur.
+
+## 0.3.16 - 2025-12-23
+- Admin: added auto-generation toggles for drafts/images (all vs capture-only).
+- Admin: image auto-fetch can fall back to a keyword-based image when no URL is provided.
+
+## 0.3.15 - 2025-12-23
+- PWA: simplified "add topic" to a single field (auto-extracts URL if present).
+
+## 0.3.14 - 2025-12-23
+- Admin: action buttons (generate draft + image) are always visible on mobile by surfacing them in the topic row.
+
 ## 0.3.13 - 2025-12-23
 - PWA: compressed the mobile layout so the inbox list appears sooner; connection/install sections are now collapsible.
 

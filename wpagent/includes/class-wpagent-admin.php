@@ -244,6 +244,18 @@ final class WPAgent_Admin {
 		$fetch_source = isset($_POST['fetch_source_before_ai']) ? '1' : '0';
 		update_option(WPAgent_Settings::OPTION_FETCH_SOURCE_BEFORE_AI, $fetch_source, false);
 
+		$auto_draft_all = isset($_POST['auto_draft_all']) ? '1' : '0';
+		update_option(WPAgent_Settings::OPTION_AUTO_DRAFT_ALL, $auto_draft_all, false);
+
+		$auto_draft_capture = isset($_POST['auto_draft_capture']) ? '1' : '0';
+		update_option(WPAgent_Settings::OPTION_AUTO_DRAFT_CAPTURE, $auto_draft_capture, false);
+
+		$auto_image_all = isset($_POST['auto_image_all']) ? '1' : '0';
+		update_option(WPAgent_Settings::OPTION_AUTO_IMAGE_ALL, $auto_image_all, false);
+
+		$auto_image_capture = isset($_POST['auto_image_capture']) ? '1' : '0';
+		update_option(WPAgent_Settings::OPTION_AUTO_IMAGE_CAPTURE, $auto_image_capture, false);
+
 		// Si on change l'emplacement de menu, l'URL de retour change aussi.
 		wp_safe_redirect(WPAgent_Settings::admin_page_url(['updated' => 1]));
 		exit;
@@ -318,7 +330,7 @@ final class WPAgent_Admin {
 		$text = isset($_POST['text']) ? (string) wp_unslash($_POST['text']) : '';
 		$text = trim($text);
 
-		$post_id = WPAgent_Post_Type::create_topic(['text' => $text]);
+		$post_id = WPAgent_Post_Type::create_topic(['text' => $text, 'source' => 'admin']);
 		if (is_wp_error($post_id)) {
 			$msg = rawurlencode($post_id->get_error_message());
 			wp_safe_redirect(WPAgent_Settings::admin_page_url(['error' => $msg]));
@@ -600,6 +612,89 @@ final class WPAgent_Admin {
 		return new \WP_Error('wpagent_image_not_found', 'Aucune image trouvée sur la page (OpenGraph/Twitter/img).');
 	}
 
+	private static function fallback_image_url_from_text(string $text): string|\WP_Error {
+		$plain = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags($text)));
+		$plain = preg_replace('#https?://\S+#i', '', $plain ?? '');
+		$plain = trim($plain);
+		if ($plain === '') {
+			return new \WP_Error('wpagent_image_no_text', 'Texte insuffisant pour suggérer une image.');
+		}
+
+		$words = preg_split('/\s+/', strtolower($plain));
+		$words = array_values(array_filter(array_map('trim', $words ?? [])));
+		if (!$words) {
+			return new \WP_Error('wpagent_image_no_text', 'Texte insuffisant pour suggérer une image.');
+		}
+		$query = rawurlencode(implode(' ', array_slice($words, 0, 6)));
+		if ($query === '') {
+			return new \WP_Error('wpagent_image_no_text', 'Texte insuffisant pour suggérer une image.');
+		}
+
+		return 'https://source.unsplash.com/1200x630/?' . $query;
+	}
+
+	/**
+	 * @return array{attachment_id:int,image_url:string}|\WP_Error
+	 */
+	private static function fetch_image_for_topic(\WP_Post $topic, string $preferred_url = ''): array|\WP_Error {
+		$source_url = $preferred_url !== '' ? $preferred_url : self::get_topic_source_url($topic);
+		if ($source_url !== '') {
+			$image_url = self::discover_image_url($source_url);
+		} else {
+			$image_url = self::fallback_image_url_from_text((string) $topic->post_content);
+		}
+
+		if (is_wp_error($image_url)) {
+			return $image_url;
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		$att_id = media_sideload_image($image_url, 0, null, 'id');
+		if (is_wp_error($att_id)) {
+			return $att_id;
+		}
+
+		$att_id = (int) $att_id;
+		update_post_meta($topic->ID, '_wpagent_source_image_url', $image_url);
+		update_post_meta($topic->ID, '_wpagent_source_image_id', $att_id);
+		delete_post_meta($topic->ID, '_wpagent_image_error');
+		delete_post_meta($topic->ID, '_wpagent_image_status');
+
+		return [
+			'attachment_id' => $att_id,
+			'image_url' => $image_url,
+		];
+	}
+
+	public static function auto_fetch_image_for_topic(int $topic_id, string $preferred_url = ''): true|\WP_Error {
+		$topic = get_post($topic_id);
+		if (!$topic || $topic->post_type !== WPAgent_Post_Type::POST_TYPE) {
+			return new \WP_Error('wpagent_not_found', 'Sujet introuvable.');
+		}
+
+		$existing_id = (int) get_post_meta($topic_id, '_wpagent_source_image_id', true);
+		if ($existing_id > 0 && get_post_type($existing_id) === 'attachment') {
+			return true;
+		}
+
+		update_post_meta($topic_id, '_wpagent_image_status', 'running');
+		delete_post_meta($topic_id, '_wpagent_image_error');
+
+		$result = self::fetch_image_for_topic($topic, $preferred_url);
+		if (is_wp_error($result)) {
+			update_post_meta($topic_id, '_wpagent_image_status', 'error');
+			update_post_meta($topic_id, '_wpagent_image_error', $result->get_error_message());
+			return $result;
+		}
+
+		update_post_meta($topic_id, '_wpagent_image_status', 'done');
+		delete_post_meta($topic_id, '_wpagent_image_error');
+		return true;
+	}
+
 	private static function get_topic_source_url(\WP_Post $topic): string {
 		$meta = (string) get_post_meta($topic->ID, '_wpagent_source_url', true);
 		$meta = self::normalize_url($meta);
@@ -661,28 +756,13 @@ final class WPAgent_Admin {
 			);
 		}
 
-		$source_url = self::get_topic_source_url($topic);
-		if ($source_url === '') {
-			wp_send_json(['ok' => false, 'message' => 'Aucune URL source détectée pour ce sujet.'], 400);
+		$result = self::fetch_image_for_topic($topic);
+		if (is_wp_error($result)) {
+			wp_send_json(['ok' => false, 'message' => $result->get_error_message()], 400);
 		}
 
-		$image_url = self::discover_image_url($source_url);
-		if (is_wp_error($image_url)) {
-			wp_send_json(['ok' => false, 'message' => $image_url->get_error_message()], 400);
-		}
-
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/media.php';
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-
-		$att_id = media_sideload_image($image_url, 0, null, 'id');
-		if (is_wp_error($att_id)) {
-			wp_send_json(['ok' => false, 'message' => $att_id->get_error_message()], 400);
-		}
-
-		$att_id = (int) $att_id;
-		update_post_meta($topic_id, '_wpagent_source_image_url', $image_url);
-		update_post_meta($topic_id, '_wpagent_source_image_id', $att_id);
+		$att_id = (int) $result['attachment_id'];
+		$image_url = (string) $result['image_url'];
 
 		$thumb = wp_get_attachment_image_url($att_id, 'thumbnail');
 		$full = wp_get_attachment_url($att_id);
@@ -733,6 +813,8 @@ final class WPAgent_Admin {
 
 		delete_post_meta($topic_id, '_wpagent_source_image_url');
 		delete_post_meta($topic_id, '_wpagent_source_image_id');
+		delete_post_meta($topic_id, '_wpagent_image_status');
+		delete_post_meta($topic_id, '_wpagent_image_error');
 
 		wp_send_json(['ok' => true, 'deleted_attachment_id' => $att_id], 200);
 	}
@@ -852,6 +934,10 @@ final class WPAgent_Admin {
 		$open_after = WPAgent_Settings::open_draft_after_generate();
 		$show_under_posts_menu = WPAgent_Settings::show_under_posts_menu();
 		$fetch_source_before_ai = WPAgent_Settings::fetch_source_before_ai();
+		$auto_draft_all = WPAgent_Settings::auto_draft_all();
+		$auto_draft_capture = WPAgent_Settings::auto_draft_capture();
+		$auto_image_all = WPAgent_Settings::auto_image_all();
+		$auto_image_capture = WPAgent_Settings::auto_image_capture();
 
 		echo '<div class="wrap wpagent-admin">';
 		echo '<div class="wpagent-topbar">';
@@ -1023,22 +1109,8 @@ final class WPAgent_Admin {
 					if ($source_url !== '' && self::normalize_url($title) !== $source_url) {
 						echo '<div class="wpagent-muted"><a href="' . esc_url($source_url) . '" target="_blank" rel="noreferrer noopener">' . esc_html($source_url) . '</a></div>';
 					}
-					echo '</td>';
-					if (!$draft_ids) {
-						echo '<td>—</td>';
-					} else {
-						$links = [];
-						foreach ($draft_ids as $draft_id) {
-							$link = get_edit_post_link($draft_id, 'url');
-							if ($link) {
-								$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
-							}
-						}
-						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
-					}
-					echo '<td class="wpagent-actions-cell">';
-					echo '<div class="wpagent-row-actions">';
 
+					ob_start();
 					echo '<form class="wpagent-generate-form" method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0;display:inline-block" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr(wp_create_nonce('wpagent_generate_draft_' . $topic_id)) . '">';
 					wp_nonce_field('wpagent_generate_draft_' . $topic_id, 'wpagent_generate_draft_nonce_' . $topic_id);
 					echo '<input type="hidden" name="action" value="wpagent_generate_draft"/>';
@@ -1065,7 +1137,36 @@ final class WPAgent_Admin {
 
 					echo '<button type="button" class="wpagent-icon-btn wpagent-image-btn" data-topic-id="' . (int) $topic_id . '" data-nonce="' . esc_attr($image_nonce) . '" title="Récupérer une image"><span class="dashicons dashicons-format-image" aria-hidden="true"></span><span class="screen-reader-text">Récupérer une image</span></button>';
 					echo '<span class="spinner wpagent-inline-spinner wpagent-image-spinner" aria-hidden="true"></span>';
+					$actions_inner = ob_get_clean();
+					$img_error = (string) get_post_meta($topic_id, '_wpagent_image_error', true);
+					$ai_error = (string) get_post_meta($topic_id, '_wpagent_ai_error', true);
+					$actions_footer = '';
+					if ($img_error !== '') {
+						$actions_footer .= '<div class="wpagent-muted wpagent-image-error">Image auto: ' . esc_html($img_error) . '</div>';
+					}
+					if ($ai_error !== '') {
+						$actions_footer .= '<div class="wpagent-muted wpagent-image-error">Draft auto: ' . esc_html($ai_error) . '</div>';
+					}
 
+					echo '<div class="wpagent-row-actions wpagent-row-actions-mobile">';
+					echo $actions_inner . $actions_footer;
+					echo '</div>';
+					echo '</td>';
+					if (!$draft_ids) {
+						echo '<td>—</td>';
+					} else {
+						$links = [];
+						foreach ($draft_ids as $draft_id) {
+							$link = get_edit_post_link($draft_id, 'url');
+							if ($link) {
+								$links[] = '<a href="' . esc_url($link) . '">Draft #' . (int) $draft_id . '</a>';
+							}
+						}
+						echo '<td>' . ($links ? implode('<br/>', $links) : '—') . '</td>';
+					}
+					echo '<td class="wpagent-actions-cell">';
+					echo '<div class="wpagent-row-actions">';
+					echo $actions_inner . $actions_footer;
 					echo '</div>';
 					echo '</td>';
 					echo '</tr>';
@@ -1105,6 +1206,38 @@ final class WPAgent_Admin {
 		echo '<div><strong>🌐 Fetch URL avant IA</strong><div class="wpagent-muted">Récupère un extrait de la page source pour ancrer la rédaction.</div></div>';
 		echo '<label class="wpagent-switch" aria-label="Fetch URL avant IA">';
 		echo '<input type="checkbox" name="fetch_source_before_ai" value="1"' . checked($fetch_source_before_ai, true, false) . '/>';
+		echo '<span class="wpagent-slider"></span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wpagent-toggle">';
+		echo '<div><strong>⚡ Auto-générer le draft (tous les sujets)</strong><div class="wpagent-muted">S’applique aux sujets ajoutés via admin, PWA et capture.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Auto-générer le draft pour tous les sujets">';
+		echo '<input type="checkbox" name="auto_draft_all" value="1"' . checked($auto_draft_all, true, false) . '/>';
+		echo '<span class="wpagent-slider"></span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wpagent-toggle">';
+		echo '<div><strong>⚡ Auto-générer le draft (capture uniquement)</strong><div class="wpagent-muted">S’applique uniquement aux sujets reçus via PWA/capture.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Auto-générer le draft pour la capture uniquement">';
+		echo '<input type="checkbox" name="auto_draft_capture" value="1"' . checked($auto_draft_capture, true, false) . '/>';
+		echo '<span class="wpagent-slider"></span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wpagent-toggle">';
+		echo '<div><strong>🖼️ Auto-récupérer une image (tous les sujets)</strong><div class="wpagent-muted">Essaie de trouver une image même sans URL.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Auto-récupérer une image pour tous les sujets">';
+		echo '<input type="checkbox" name="auto_image_all" value="1"' . checked($auto_image_all, true, false) . '/>';
+		echo '<span class="wpagent-slider"></span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wpagent-toggle">';
+		echo '<div><strong>🖼️ Auto-récupérer une image (capture uniquement)</strong><div class="wpagent-muted">S’applique uniquement aux sujets reçus via PWA/capture.</div></div>';
+		echo '<label class="wpagent-switch" aria-label="Auto-récupérer une image pour la capture uniquement">';
+		echo '<input type="checkbox" name="auto_image_capture" value="1"' . checked($auto_image_capture, true, false) . '/>';
 		echo '<span class="wpagent-slider"></span>';
 		echo '</label>';
 		echo '</div>';

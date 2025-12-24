@@ -195,6 +195,7 @@ final class WPAgent_REST {
 				'text' => $text,
 				'url' => $url,
 				'source_title' => $source_title,
+				'source' => 'capture',
 			]
 		);
 
@@ -417,6 +418,7 @@ final class WPAgent_REST {
 			.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 12px 36px rgba(17,24,39,.08)}
 			.card.compact{padding:12px}
 			.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+			.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 			h1{font-size:19px;margin:0}
 			h2{font-size:15px;margin:0}
 			p{color:var(--muted);margin:4px 0 0}
@@ -442,6 +444,14 @@ final class WPAgent_REST {
 			details.card > summary::-webkit-details-marker{display:none}
 			details.card[open] > summary{border-bottom:1px solid var(--border)}
 			.card-body{padding:12px 14px}
+			.drawer-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.25);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:50}
+			.drawer-backdrop.open{opacity:1;pointer-events:auto}
+			.drawer{position:fixed;left:0;right:0;bottom:-100%;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -24px 60px rgba(17,24,39,.2);transition:transform .25s ease, bottom .25s ease;z-index:60;max-height:82vh;overflow:auto}
+			.drawer.open{bottom:0}
+			.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border)}
+			.drawer-body{padding:14px 16px}
+			.drawer-close{border:0;background:#f3f4f6;color:#111827;border-radius:999px;padding:6px 10px;font-size:13px}
+			body.drawer-open{overflow:hidden}
 			@media (max-width:600px){
 				.wrap{padding:12px}
 				.card{padding:10px;margin:8px 0;border-radius:14px}
@@ -452,25 +462,33 @@ final class WPAgent_REST {
 				.hint{display:none}
 				.card-body{padding:10px 12px}
 				details.card > summary{padding:10px 12px}
+				.card-actions .btn{width:auto}
 			}
 		</style>';
 		$html .= '</head><body><div class="wrap">';
-		$html .= '<div class="card compact"><h1>WPagent</h1><p class="small hint">Inbox → draft WordPress.</p></div>';
+		$html .= '<div class="card compact"><h1>WPagent</h1><p class="small hint">Inbox → draft WordPress.</p>';
+		$html .= '<div class="card-actions">';
+		$html .= '<button class="btn secondary sm" type="button" data-open-drawer="add">Ajouter un sujet</button>';
+		$html .= '<button class="btn secondary sm" type="button" data-open-drawer="connect">Connexion</button>';
+		$html .= '<button class="btn secondary sm" type="button" data-open-drawer="install">Install & API</button>';
+		$html .= '</div></div>';
 		$html .= '<div class="card"><div class="card-head"><h2>Inbox</h2>';
 		$html .= '<button class="btn secondary sm" id="refresh" type="button">Rafraîchir</button></div>';
 		$html .= '<div id="listStatus" class="status"></div><div class="items" id="items"></div></div>';
-		$html .= '<div class="card"><div class="card-head"><h2>Ajouter un sujet</h2></div>';
-		$html .= '<label class="sr-only" for="text">Texte / idée</label><textarea id="text" placeholder="Écris ton idée…"></textarea>';
-		$html .= '<label class="sr-only" for="url">URL (optionnel)</label><input id="url" type="url" placeholder="https://…"/>';
-		$html .= '<label class="sr-only" for="source_title">Titre source (optionnel)</label><input id="source_title" type="text" placeholder="Titre…"/>';
+		$html .= '<div id="drawerBackdrop" class="drawer-backdrop" data-close-drawer="1"></div>';
+		$html .= '<div class="drawer" id="drawer-add"><div class="drawer-head"><strong>Ajouter un sujet</strong><button class="drawer-close" type="button" data-close-drawer="1">Fermer</button></div>';
+		$html .= '<div class="drawer-body">';
+		$html .= '<label class="sr-only" for="text">Texte / idée</label><textarea id="text" placeholder="Écris ton idée (texte + lien éventuel)…"></textarea>';
 		$html .= '<div class="btn-row"><button class="btn" id="send" type="button">Ajouter à l’inbox</button></div>';
-		$html .= '<div id="sendStatus" class="status"></div></div>';
-		$html .= '<details class="card compact"><summary>Connexion</summary><div class="card-body"><p class="small hint">Token stocké localement.</p>';
+		$html .= '<div id="sendStatus" class="status"></div></div></div>';
+		$html .= '<div class="drawer" id="drawer-connect"><div class="drawer-head"><strong>Connexion</strong><button class="drawer-close" type="button" data-close-drawer="1">Fermer</button></div>';
+		$html .= '<div class="drawer-body"><p class="small hint">Token stocké localement.</p>';
 		$html .= '<label class="sr-only" for="token">Token</label><input id="token" placeholder="colle le token"/>';
 		$html .= '<div class="btn-row"><button class="btn secondary" id="saveToken" type="button">Enregistrer</button></div>';
-		$html .= '<div id="tokenStatus" class="status"></div></div></details>';
-		$html .= '<details class="card compact"><summary>Install & API</summary><div class="card-body"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “WPagent”.</p>';
-		$html .= '<p class="small">API: <code>' . esc_html($inbox) . '</code> / <code>' . esc_html($topics) . '</code></p></div></details>';
+		$html .= '<div id="tokenStatus" class="status"></div></div></div>';
+		$html .= '<div class="drawer" id="drawer-install"><div class="drawer-head"><strong>Install & API</strong><button class="drawer-close" type="button" data-close-drawer="1">Fermer</button></div>';
+		$html .= '<div class="drawer-body"><p class="small">Install Android: ouvre cette page dans Chrome → menu ⋮ → “Ajouter à l’écran d’accueil”. Ensuite “Partager” → “WPagent”.</p>';
+		$html .= '<p class="small">API: <code>' . esc_html($inbox) . '</code> / <code>' . esc_html($topics) . '</code></p></div></div>';
 
 		$html .= '<script>
 			const inboxUrl=' . json_encode($inbox) . ';
@@ -483,12 +501,28 @@ final class WPAgent_REST {
 			// No "clear token" UI on purpose; overwrite token to change it.
 			function setStatus(el,msg,ok){el.textContent=msg;el.className="status "+(ok?"ok":"err");}
 			function esc(s){return (s||"").replace(/[&<>]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));}
+			function extractFirstUrl(text){
+				const m=String(text||"").match(/https?:\\/\\/[^\\s)\\]}>"\']+/i);
+				return m ? m[0] : "";
+			}
+			function normalizeTopicPayload(payload){
+				const rawText=String((payload && payload.text) || "").trim();
+				const url=(payload && payload.url) || extractFirstUrl(rawText);
+				const withoutUrl=url ? rawText.replace(url,"").trim() : "";
+				const sourceTitle=(payload && payload.source_title) || (url && withoutUrl ? withoutUrl : "");
+				return {
+					text: rawText,
+					url: url,
+					source_title: sourceTitle
+				};
+			}
 			async function addTopic(payload){
 				const token=getToken();
 				if(!token){throw new Error("Token manquant");}
+				const normalized=normalizeTopicPayload(payload);
 				const form=new URLSearchParams();
 				form.set("token",token);
-				for(const k of ["text","url","source_title"]){ if(payload[k]) form.set(k,payload[k]); }
+				for(const k of ["text","url","source_title"]){ if(normalized[k]) form.set(k,normalized[k]); }
 				const res=await fetch(inboxUrl,{method:"POST",headers:{ "Content-Type":"application/x-www-form-urlencoded" },body:form.toString()});
 				const txt=await res.text();
 				let data; try{ data=JSON.parse(txt); }catch(e){ throw new Error("Réponse invalide"); }
@@ -550,8 +584,8 @@ final class WPAgent_REST {
 			$("send").addEventListener("click",async()=>{
 				try{
 					setStatus($("sendStatus"),"Envoi…",true);
-					await addTopic({ text:$("text").value.trim(), url:$("url").value.trim(), source_title:$("source_title").value.trim() });
-					$("text").value=""; $("url").value=""; $("source_title").value="";
+					await addTopic({ text:$("text").value.trim() });
+					$("text").value="";
 					setStatus($("sendStatus"),"Ajouté à l’inbox.",true);
 					await refresh();
 				}catch(e){ setStatus($("sendStatus"),e.message||"Erreur",false); }
@@ -580,8 +614,6 @@ final class WPAgent_REST {
 				if(url && idea && !idea.includes(url)) idea = idea + "\\n" + url;
 
 				$("text").value = idea;
-				$("url").value = url;
-				$("source_title").value = title;
 
 					if(!token){
 						setStatus($("tokenStatus"),"Contenu partagé détecté. Colle ton token puis clique “Enregistrer”.",false);
@@ -592,7 +624,7 @@ final class WPAgent_REST {
 				try{
 					setStatus($("sendStatus"),"Ajout automatique (partage)…",true);
 					await addTopic({ text:idea, url:url, source_title:title });
-					$("text").value=""; $("url").value=""; $("source_title").value="";
+					$("text").value="";
 					try{ localStorage.removeItem("wpagent_share_payload"); }catch(e){}
 					setStatus($("sendStatus"),"Ajouté à l’inbox.",true);
 					await refresh();
@@ -604,6 +636,33 @@ final class WPAgent_REST {
 			// First load
 			refresh().catch(()=>{});
 			consumeShareIfAny().catch(()=>{});
+
+			const backdrop=$("drawerBackdrop");
+			const drawerMap={
+				add:$("drawer-add"),
+				connect:$("drawer-connect"),
+				install:$("drawer-install")
+			};
+			function closeDrawers(){
+				backdrop.classList.remove("open");
+				document.body.classList.remove("drawer-open");
+				for(const k in drawerMap){ drawerMap[k].classList.remove("open"); }
+			}
+			function openDrawer(key){
+				const target=drawerMap[key];
+				if(!target){ return; }
+				closeDrawers();
+				backdrop.classList.add("open");
+				document.body.classList.add("drawer-open");
+				target.classList.add("open");
+			}
+			document.querySelectorAll("[data-open-drawer]").forEach((btn)=>{
+				btn.addEventListener("click",()=>openDrawer(btn.getAttribute("data-open-drawer")));
+			});
+			document.querySelectorAll("[data-close-drawer]").forEach((btn)=>{
+				btn.addEventListener("click",closeDrawers);
+			});
+			document.addEventListener("keydown",(e)=>{ if(e.key==="Escape"){ closeDrawers(); } });
 		</script>';
 		$html .= '</div></body></html>';
 
